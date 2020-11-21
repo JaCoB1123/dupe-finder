@@ -29,7 +29,7 @@ func main() {
 		fmt.Println("Loading file", *fromFile)
 
 		byteValue, _ := ioutil.ReadFile(*fromFile)
-		err := json.Unmarshal(byteValue, filesMap)
+		err := json.Unmarshal(byteValue, &filesMap.FilesBySize)
 		if err != nil {
 			panic(err)
 		}
