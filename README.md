@@ -34,15 +34,15 @@ dupe-finder supports the following options:
 Find all duplicate files in `~/` and save the results to `dupes.json`
 ```
 > dupe-finder --to-file dupes.json ~/
-``̀`
+```
 
 Load previous results from `dupes.json` and delete all duplicates located in ~/.cache
 ```
 > dupe-finder --from-file dupes.json --delete-dupes-in ~/.cache
-``̀`
+```
 
 Find all duplicate files in `~/' and `/mnt/EXT`. Prompt which file to keep for each set of duplicates and move the others to /dupes/.
 ```
 > dupe-finder --delete-prompt --move-files /dupes/ ~/ /mnt/EXT
-``̀`
+```
 
