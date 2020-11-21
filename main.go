@@ -4,24 +4,43 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 )
 
 func main() {
-	filesMap := newFilesMap()
-	for _, path := range os.Args[1:] {
-		filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
-			filesMap.Add(path, info)
-			return nil
-		})
-		fmt.Println(path)
+	fromFile := flag.String("from-file", "", "Load results file from <path>")
+	toFile := flag.String("to-file", "", "Save results to <path>")
+	flag.Parse()
+
+	var filesMap filesMap
+	if *fromFile != "" {
+
+		byteValue, _ := ioutil.ReadFile(*fromFile)
+
+		// we unmarshal our byteArray which contains our
+		// jsonFile's content into 'users' which we defined above
+		json.Unmarshal(byteValue, &filesMap)
+	} else {
+		filesMap = newFilesMap()
+
+		for _, path := range os.Args[1:] {
+			filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
+				filesMap.Add(path, info)
+				return nil
+			})
+			fmt.Println(path)
+		}
 	}
 
-	json, _ := json.MarshalIndent(filesMap.FilesBySize, "", "  ")
-	fmt.Printf("\n\n\n%s\n\n\n", json)
+	if *toFile != "" && *fromFile == "" {
+		json, _ := json.MarshalIndent(filesMap.FilesBySize, "", "  ")
+		ioutil.WriteFile(*toFile, json, 644)
+	}
 }
 
 type filesMap struct {
@@ -64,6 +83,7 @@ func (fm *filesMap) Add(path string, info os.FileInfo) error {
 		return err2
 	}
 
+	// for later files always append by hash
 	return appendByFileHash(filesByHash, fileInfo)
 }
 
