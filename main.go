@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -14,19 +15,25 @@ import (
 func main() {
 	fromFile := flag.String("from-file", "", "Load results file from <path>")
 	toFile := flag.String("to-file", "", "Save results to <path>")
+	deleteDupesIn := flag.String("delete-dupes-in", "", "Delete duplicates if they are contained in <path>")
+	force := flag.Bool("force", false, "Actually delete files. Without this options, the files to be deleted are only printed")
 	flag.Parse()
 
-	var filesMap filesMap
+	fmt.Printf("fromFile: \"%v\"\n", *fromFile)
+	fmt.Printf("toFile: \"%v\"\n", *toFile)
+	fmt.Printf("deleteDupesIn: \"%v\"\n", *deleteDupesIn)
+	fmt.Printf("force: \"%v\"\n", *force)
+
+	filesMap := newFilesMap()
 	if *fromFile != "" {
+		fmt.Println("Loading file", *fromFile)
 
 		byteValue, _ := ioutil.ReadFile(*fromFile)
-
-		// we unmarshal our byteArray which contains our
-		// jsonFile's content into 'users' which we defined above
-		json.Unmarshal(byteValue, &filesMap)
+		err := json.Unmarshal(byteValue, filesMap)
+		if err != nil {
+			panic(err)
+		}
 	} else {
-		filesMap = newFilesMap()
-
 		for _, path := range flag.Args() {
 			filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
 				filesMap.Add(path, info)
@@ -39,30 +46,49 @@ func main() {
 		json, _ := json.MarshalIndent(filesMap.FilesBySize, "", "  ")
 		ioutil.WriteFile(*toFile, json, 644)
 	}
+
+	if *deleteDupesIn != "" {
+		fmt.Println("Deleting", filesMap)
+		for size := range filesMap.FilesBySize {
+			fmt.Println("Deleting")
+			for hash := range filesMap.FilesBySize[size] {
+				duplicateFiles := filesMap.FilesBySize[size][hash]
+				if len(duplicateFiles) <= 1 {
+					continue
+				}
+
+				fmt.Println("Would delete")
+				for _, file := range duplicateFiles {
+					if !*force {
+						fmt.Println(file)
+					}
+				}
+			}
+		}
+	}
 }
 
-type filesMap struct {
-	FilesBySize map[int64]map[string][]*fileEntry
+// FilesMap is a struct for listing files by Size and Hash to search for duplicates
+type FilesMap struct {
+	FilesBySize map[int64]map[string][]string
 }
 
-func (fm *filesMap) Add(path string, info os.FileInfo) error {
+// Add a file to the Map and calculate hash on demand
+func (fm *FilesMap) Add(path string, info os.FileInfo) error {
 	if info.IsDir() {
 		return nil
 	}
 
-	fileInfo := &fileEntry{
-		Path: path,
-		Size: info.Size(),
-	}
+	fileInfo := path
 
-	filesByHash := fm.FilesBySize[fileInfo.Size]
+	filesByHash := fm.FilesBySize[info.Size()]
 
 	// first file with same size
 	// => create new map for size
 	if filesByHash == nil {
-		filesByHash = map[string][]*fileEntry{}
-		fm.FilesBySize[fileInfo.Size] = filesByHash
-		filesByHash[""] = []*fileEntry{fileInfo}
+		filesByHash = map[string][]string{}
+		fm.FilesBySize[info.Size()] = filesByHash
+		filesByHash[""] = []string{fileInfo}
 		return nil
 	}
 
@@ -85,8 +111,8 @@ func (fm *filesMap) Add(path string, info os.FileInfo) error {
 	return appendByFileHash(filesByHash, fileInfo)
 }
 
-func appendByFileHash(filesByHash map[string][]*fileEntry, fileInfo *fileEntry) error {
-	hash, err := calculateHash(fileInfo.Path)
+func appendByFileHash(filesByHash map[string][]string, fileInfo string) error {
+	hash, err := calculateHash(fileInfo)
 
 	if err != nil {
 		return err
@@ -95,20 +121,15 @@ func appendByFileHash(filesByHash map[string][]*fileEntry, fileInfo *fileEntry) 
 	if _, ok := filesByHash[hash]; ok {
 		filesByHash[hash] = append(filesByHash[hash], fileInfo)
 	} else {
-		filesByHash[hash] = []*fileEntry{fileInfo}
+		filesByHash[hash] = []string{fileInfo}
 	}
 	return nil
 }
 
-func newFilesMap() filesMap {
-	return filesMap{
-		FilesBySize: map[int64]map[string][]*fileEntry{},
+func newFilesMap() *FilesMap {
+	return &FilesMap{
+		FilesBySize: map[int64]map[string][]string{},
 	}
-}
-
-type fileEntry struct {
-	Path string
-	Size int64
 }
 
 func calculateHash(path string) (string, error) {
