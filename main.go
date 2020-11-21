@@ -23,38 +23,6 @@ var moveToFolder = flag.String("move-files", "", "Move files to <path> instead o
 var force = flag.Bool("force", false, "Actually delete files. Without this options, the files to be deleted are only printed")
 var verbose = flag.Bool("verbose", false, "Output additional information")
 
-func delete(path string) {
-	if !*force {
-		return
-	}
-
-	if *moveToFolder == "" {
-		os.Remove(path)
-		return
-	}
-
-	moveButDontOvewrite(path, *moveToFolder)
-}
-
-func moveButDontOvewrite(path string, targetPath string) {
-	num := 0
-
-	filename := filepath.Base(path)
-
-	target := filepath.Join(targetPath, filename)
-
-	for {
-		_, err := os.Stat(target)
-		if os.IsNotExist(err) {
-			os.Rename(path, target)
-			return
-		}
-
-		target = filepath.Join(targetPath, filename+"."+strconv.Itoa(num))
-		num++
-	}
-}
-
 func main() {
 	flag.Parse()
 
@@ -98,7 +66,7 @@ func main() {
 					if strings.HasPrefix(filepath.Clean(file), deleteIn) {
 						fmt.Println("Would delete ", file)
 						if *force {
-							delete(file)
+							remove(file)
 						}
 					}
 				}
@@ -138,7 +106,7 @@ func main() {
 					}
 
 					if *force {
-						delete(file)
+						remove(file)
 					}
 				}
 
