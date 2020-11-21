@@ -49,20 +49,6 @@ func main() {
 		ioutil.WriteFile(*toFile, json, 644)
 	}
 
-	for size := range filesMap.FilesBySize {
-		for hash := range filesMap.FilesBySize[size] {
-			duplicateFiles := filesMap.FilesBySize[size][hash]
-			if len(duplicateFiles) <= 1 {
-				continue
-			}
-
-			for _, file := range duplicateFiles {
-				fmt.Println(file)
-			}
-			fmt.Println()
-		}
-	}
-
 	if *deleteDupesIn != "" {
 		deleteIn := filepath.Clean(*deleteDupesIn)
 		for size := range filesMap.FilesBySize {
@@ -80,6 +66,20 @@ func main() {
 						}
 					}
 				}
+			}
+		}
+	} else {
+		for size := range filesMap.FilesBySize {
+			for hash := range filesMap.FilesBySize[size] {
+				duplicateFiles := filesMap.FilesBySize[size][hash]
+				if len(duplicateFiles) <= 1 {
+					continue
+				}
+
+				for _, file := range duplicateFiles {
+					fmt.Println(file)
+				}
+				fmt.Println()
 			}
 		}
 	}
