@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
@@ -10,12 +11,14 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
 var fromFile = flag.String("from-file", "", "Load results file from <path>")
 var toFile = flag.String("to-file", "", "Save results to <path>")
 var deleteDupesIn = flag.String("delete-dupes-in", "", "Delete duplicates if they are contained in <path>")
+var promptForDelete = flag.Bool("delete-prompt", false, "Ask which file to keep for each dupe-set")
 var force = flag.Bool("force", false, "Actually delete files. Without this options, the files to be deleted are only printed")
 var verbose = flag.Bool("verbose", false, "Output additional information")
 
@@ -66,6 +69,49 @@ func main() {
 						}
 					}
 				}
+			}
+		}
+	} else if *promptForDelete {
+		reader := bufio.NewReader(os.Stdin)
+		for size := range filesMap.FilesBySize {
+			for hash := range filesMap.FilesBySize[size] {
+				duplicateFiles := filesMap.FilesBySize[size][hash]
+				if len(duplicateFiles) <= 1 {
+					continue
+				}
+
+				fmt.Print("\033[H\033[2J")
+				for i, file := range duplicateFiles {
+					fmt.Println(i+1, file)
+					if *force {
+						os.Remove(file)
+					}
+				}
+
+				fmt.Printf("Which file to keep? ")
+				input, err := reader.ReadString('\n')
+				if err != nil {
+					fmt.Println("Invalid input")
+					continue
+				}
+
+				input = strings.TrimRight(input, "\n\r")
+				intInput, err := strconv.Atoi(input)
+				if err != nil || intInput > len(duplicateFiles) || intInput < 1 {
+					fmt.Println("Invalid input")
+					continue
+				}
+
+				for i, file := range duplicateFiles {
+					if i+1 == intInput {
+						continue
+					}
+
+					if *force {
+						os.Remove(file)
+					}
+				}
+
 			}
 		}
 	} else {
