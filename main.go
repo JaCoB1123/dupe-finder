@@ -27,7 +27,7 @@ func main() {
 	} else {
 		filesMap = newFilesMap()
 
-		for _, path := range os.Args[1:] {
+		for _, path := range flag.Args() {
 			filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
 				filesMap.Add(path, info)
 				return nil
