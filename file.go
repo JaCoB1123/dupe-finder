@@ -1,6 +1,9 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -36,4 +39,19 @@ func moveButDontOvewrite(path string, targetPath string) {
 		target = filepath.Join(targetPath, filename+"."+strconv.Itoa(num))
 		num++
 	}
+}
+
+func calculateHash(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+
+	return base64.RawStdEncoding.EncodeToString(h.Sum(nil)), nil
 }
