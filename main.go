@@ -29,99 +29,107 @@ func main() {
 
 	filesMap := newFilesMap()
 	if *fromFile != "" {
-		fmt.Println("Loading file", *fromFile)
-
 		byteValue, _ := ioutil.ReadFile(*fromFile)
-		err := json.Unmarshal(byteValue, &filesMap.FilesBySize)
+		err := json.Unmarshal(byteValue, &filesMap.FilesByHash)
 		if err != nil {
 			panic(err)
 		}
 	} else {
+		done := make(chan bool)
+		//for i := 0; i < runtime.GOMAXPROCS(0); i++ {
+		go filesMap.HashingWorker()
+		//}
+
+		go filesMap.IncomingWorker()
+
+		go filesMap.HashedWorker(done)
+
 		for _, path := range flag.Args() {
 			filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
-				filesMap.Add(path, info)
+				if info.IsDir() {
+					return nil
+				}
+
+				filesMap.FilesIncoming <- fileEntry{path, info.Size(), ""}
 				return nil
 			})
 		}
+
+		close(filesMap.FilesIncoming)
+		<-done
 	}
 
 	if *toFile != "" && *fromFile == "" {
-		json, _ := json.MarshalIndent(filesMap.FilesBySize, "", "  ")
+		json, _ := json.MarshalIndent(filesMap.FilesByHash, "", "  ")
 		ioutil.WriteFile(*toFile, json, 644)
 	}
 
 	if *deleteDupesIn != "" {
 		deleteIn := filepath.Clean(*deleteDupesIn)
-		for size := range filesMap.FilesBySize {
-			for hash := range filesMap.FilesBySize[size] {
-				duplicateFiles := filesMap.FilesBySize[size][hash]
-				if len(duplicateFiles) <= 1 {
-					continue
-				}
+		for hash := range filesMap.FilesByHash {
+			duplicateFiles := filesMap.FilesByHash[hash]
+			if len(duplicateFiles) <= 1 {
+				continue
+			}
 
-				for _, file := range duplicateFiles {
-					if strings.HasPrefix(filepath.Clean(file), deleteIn) {
-						fmt.Println("Would delete ", file)
-						if *force {
-							remove(file)
-						}
+			for _, file := range duplicateFiles {
+				if strings.HasPrefix(filepath.Clean(file), deleteIn) {
+					fmt.Println("Would delete ", file)
+					if *force {
+						remove(file)
 					}
 				}
 			}
 		}
 	} else if *promptForDelete {
 		reader := bufio.NewReader(os.Stdin)
-		for size := range filesMap.FilesBySize {
-			for hash := range filesMap.FilesBySize[size] {
-				duplicateFiles := filesMap.FilesBySize[size][hash]
-				if len(duplicateFiles) <= 1 {
+		for hash := range filesMap.FilesByHash {
+			duplicateFiles := filesMap.FilesByHash[hash]
+			if len(duplicateFiles) <= 1 {
+				continue
+			}
+
+			fmt.Print("\033[H\033[2J")
+			for i, file := range duplicateFiles {
+				fmt.Println(i+1, file)
+			}
+
+			fmt.Printf("Which file to keep? ")
+			input, err := reader.ReadString('\n')
+			if err != nil {
+				fmt.Println("Invalid input")
+				continue
+			}
+
+			input = strings.TrimRight(input, "\n\r")
+			intInput, err := strconv.Atoi(input)
+			if err != nil || intInput > len(duplicateFiles) || intInput < 1 {
+				fmt.Println("Invalid input")
+				continue
+			}
+
+			for i, file := range duplicateFiles {
+				if i+1 == intInput {
 					continue
 				}
 
-				fmt.Print("\033[H\033[2J")
-				for i, file := range duplicateFiles {
-					fmt.Println(i+1, file)
-				}
-
-				fmt.Printf("Which file to keep? ")
-				input, err := reader.ReadString('\n')
-				if err != nil {
-					fmt.Println("Invalid input")
-					continue
-				}
-
-				input = strings.TrimRight(input, "\n\r")
-				intInput, err := strconv.Atoi(input)
-				if err != nil || intInput > len(duplicateFiles) || intInput < 1 {
-					fmt.Println("Invalid input")
-					continue
-				}
-
-				for i, file := range duplicateFiles {
-					if i+1 == intInput {
-						continue
-					}
-
-					if *force {
-						remove(file)
-					}
+				if *force {
+					remove(file)
 				}
 
 			}
 		}
 	} else {
-		for size := range filesMap.FilesBySize {
-			for hash := range filesMap.FilesBySize[size] {
-				duplicateFiles := filesMap.FilesBySize[size][hash]
-				if len(duplicateFiles) <= 1 {
-					continue
-				}
-
-				for _, file := range duplicateFiles {
-					fmt.Println(file)
-				}
-				fmt.Println()
+		for hash := range filesMap.FilesByHash {
+			duplicateFiles := filesMap.FilesByHash[hash]
+			if len(duplicateFiles) <= 1 {
+				continue
 			}
+
+			for _, file := range duplicateFiles {
+				fmt.Println(file)
+			}
+			fmt.Println()
 		}
 	}
 }
@@ -138,4 +146,10 @@ func printConfiguration() {
 
 	fmt.Println()
 	fmt.Println()
+}
+
+type fileEntry struct {
+	path string
+	size int64
+	hash string
 }

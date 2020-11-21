@@ -1,65 +1,91 @@
 package main
 
-import "os"
+import (
+	"fmt"
+	"log"
+	"sync"
+)
 
 // FilesMap is a struct for listing files by Size and Hash to search for duplicates
 type FilesMap struct {
-	FilesBySize map[int64]map[string][]string
-}
+	FilesBySize map[int64][]string
 
-// Add a file to the Map and calculate hash on demand
-func (fm *FilesMap) Add(path string, info os.FileInfo) error {
-	if info.IsDir() {
-		return nil
-	}
+	FilesByHash map[string][]string
 
-	filesByHash := fm.FilesBySize[info.Size()]
+	FilesHashing chan fileEntry
 
-	// first file with same size
-	// => create new map for size
-	if filesByHash == nil {
-		filesByHash = map[string][]string{}
-		fm.FilesBySize[info.Size()] = filesByHash
-		filesByHash[""] = []string{path}
-		return nil
-	}
+	FilesIncoming chan fileEntry
 
-	// second file with same size
-	// => calculate hashes for all entries
-	if _, hasEmptyHash := filesByHash[""]; hasEmptyHash {
-		err := appendByFileHash(filesByHash, fileInfo)
-		err2 := appendByFileHash(filesByHash, filesByHash[""][0])
+	FilesHashed chan fileEntry
 
-		delete(filesByHash, "")
-
-		if err != nil {
-			return err
-		}
-
-		return err2
-	}
-
-	// for later files always append by hash
-	return appendByFileHash(filesByHash, fileInfo)
-}
-
-func appendByFileHash(filesByHash map[string][]string, path string) error {
-	hash, err := calculateHash(path)
-
-	if err != nil {
-		return err
-	}
-
-	if _, ok := filesByHash[hash]; ok {
-		filesByHash[hash] = append(filesByHash[hash], path)
-	} else {
-		filesByHash[hash] = []string{path}
-	}
-	return nil
+	lock sync.Mutex
 }
 
 func newFilesMap() *FilesMap {
 	return &FilesMap{
-		FilesBySize: map[int64]map[string][]string{},
+		FilesBySize:   map[int64][]string{},
+		FilesByHash:   map[string][]string{},
+		FilesHashed:   make(chan fileEntry),
+		FilesIncoming: make(chan fileEntry),
+		FilesHashing:  make(chan fileEntry),
 	}
+}
+
+func (fm *FilesMap) IncomingWorker() {
+	for file := range fm.FilesIncoming {
+		if *verbose {
+			fmt.Println("Incoming", file.path)
+		}
+
+		files, ok := fm.FilesBySize[file.size]
+		if !ok {
+			files = []string{file.path}
+			fm.FilesBySize[file.size] = files
+			continue
+		}
+
+		if len(files) == 1 {
+			fm.FilesHashing <- fileEntry{files[0], file.size, ""}
+		}
+
+		fm.FilesHashing <- file
+	}
+	close(fm.FilesHashing)
+}
+
+func (fm *FilesMap) HashingWorker() {
+	for file := range fm.FilesHashing {
+		if *verbose {
+			fmt.Println("Hashing", file.path)
+		}
+
+		hash, err := calculateHash(file.path)
+
+		if err != nil {
+			log.Printf("Error calculating Hash for %s: %v\n", file, err)
+			continue
+		}
+
+		file.hash = hash
+		fm.FilesHashed <- file
+	}
+	close(fm.FilesHashed)
+}
+
+func (fm *FilesMap) HashedWorker(done chan bool) {
+	for file := range fm.FilesHashed {
+		if *verbose {
+			fmt.Println("Finishing", file.path)
+		}
+
+		fm.lock.Lock()
+		if _, ok := fm.FilesByHash[file.hash]; ok {
+			fm.FilesByHash[file.hash] = append(fm.FilesByHash[file.hash], file.path)
+		} else {
+			fm.FilesByHash[file.hash] = []string{file.path}
+		}
+		fm.lock.Unlock()
+	}
+
+	done <- true
 }
