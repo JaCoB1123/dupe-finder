@@ -116,9 +116,6 @@ func main() {
 				fmt.Print("\033[H\033[2J")
 				for i, file := range duplicateFiles {
 					fmt.Println(i+1, file)
-					if *force {
-						Delete(file)
-					}
 				}
 
 				fmt.Printf("Which file to keep? ")
@@ -141,7 +138,7 @@ func main() {
 					}
 
 					if *force {
-						os.Remove(file)
+						Delete(file)
 					}
 				}
 
