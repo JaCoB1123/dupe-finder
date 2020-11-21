@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -19,35 +20,71 @@ func main() {
 		fmt.Println(path)
 	}
 
+	json, _ := json.MarshalIndent(filesMap.FilesBySize, "", "  ")
+	fmt.Printf("\n\n\n%s\n\n\n", json)
 }
 
 type filesMap struct {
-	Files map[int64]map[string]*fileEntry
+	FilesBySize map[int64]map[string][]*fileEntry
 }
 
-func (fm *filesMap) Add(path string, info os.FileInfo) {
+func (fm *filesMap) Add(path string, info os.FileInfo) error {
+	if info.IsDir() {
+		return nil
+	}
+
 	fileInfo := &fileEntry{
 		Path: path,
 		Size: info.Size(),
 	}
 
-	existing := fm.Files[fileInfo.Size]
-	if existing == nil {
-		existing = map[string]*fileEntry{}
-		fm.Files[fileInfo.Size] = existing
-		existing[""] = fileInfo
-		return
+	filesByHash := fm.FilesBySize[fileInfo.Size]
+
+	// first file with same size
+	// => create new map for size
+	if filesByHash == nil {
+		filesByHash = map[string][]*fileEntry{}
+		fm.FilesBySize[fileInfo.Size] = filesByHash
+		filesByHash[""] = []*fileEntry{fileInfo}
+		return nil
 	}
 
-	fmt.Println("Dupes: " + path)
-	fmt.Println(existing[""])
-	fm.Files[fileInfo.Size] = nil
+	// second file with same size
+	// => calculate hashes for all entries
+	if _, hasEmptyHash := filesByHash[""]; hasEmptyHash {
+		err := appendByFileHash(filesByHash, fileInfo)
+		err2 := appendByFileHash(filesByHash, filesByHash[""][0])
 
+		delete(filesByHash, "")
+
+		if err != nil {
+			return err
+		}
+
+		return err2
+	}
+
+	return appendByFileHash(filesByHash, fileInfo)
+}
+
+func appendByFileHash(filesByHash map[string][]*fileEntry, fileInfo *fileEntry) error {
+	hash, err := calculateHash(fileInfo.Path)
+
+	if err != nil {
+		return err
+	}
+
+	if _, ok := filesByHash[hash]; ok {
+		filesByHash[hash] = append(filesByHash[hash], fileInfo)
+	} else {
+		filesByHash[hash] = []*fileEntry{fileInfo}
+	}
+	return nil
 }
 
 func newFilesMap() filesMap {
 	return filesMap{
-		Files: map[int64]map[string]*fileEntry{},
+		FilesBySize: map[int64]map[string][]*fileEntry{},
 	}
 }
 
