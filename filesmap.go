@@ -13,8 +13,6 @@ func (fm *FilesMap) Add(path string, info os.FileInfo) error {
 		return nil
 	}
 
-	fileInfo := path
-
 	filesByHash := fm.FilesBySize[info.Size()]
 
 	// first file with same size
@@ -22,7 +20,7 @@ func (fm *FilesMap) Add(path string, info os.FileInfo) error {
 	if filesByHash == nil {
 		filesByHash = map[string][]string{}
 		fm.FilesBySize[info.Size()] = filesByHash
-		filesByHash[""] = []string{fileInfo}
+		filesByHash[""] = []string{path}
 		return nil
 	}
 
@@ -45,17 +43,17 @@ func (fm *FilesMap) Add(path string, info os.FileInfo) error {
 	return appendByFileHash(filesByHash, fileInfo)
 }
 
-func appendByFileHash(filesByHash map[string][]string, fileInfo string) error {
-	hash, err := calculateHash(fileInfo)
+func appendByFileHash(filesByHash map[string][]string, path string) error {
+	hash, err := calculateHash(path)
 
 	if err != nil {
 		return err
 	}
 
 	if _, ok := filesByHash[hash]; ok {
-		filesByHash[hash] = append(filesByHash[hash], fileInfo)
+		filesByHash[hash] = append(filesByHash[hash], path)
 	} else {
-		filesByHash[hash] = []string{fileInfo}
+		filesByHash[hash] = []string{path}
 	}
 	return nil
 }
