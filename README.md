@@ -3,11 +3,13 @@ Because I couldn't find a good program for my usecase, I wrote this simple Go pr
 
 ## Installation
 
-If you have go installed, the easiest way to install is `go get`:
+If you have go installed, the easiest way to install and update is `go get`:
 
 ```
-go get "github.com/JaCoB1123/dupe-finder"
+go get -u "github.com/JaCoB1123/dupe-finder"
 ```
+
+Otherwise you can download the latest binary from the [releases](https://github.com/JaCoB1123/dupe-finder/releases) page.
 
 ## Usage
 
