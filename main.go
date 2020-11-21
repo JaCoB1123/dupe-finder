@@ -13,17 +13,18 @@ import (
 	"strings"
 )
 
+var fromFile = flag.String("from-file", "", "Load results file from <path>")
+var toFile = flag.String("to-file", "", "Save results to <path>")
+var deleteDupesIn = flag.String("delete-dupes-in", "", "Delete duplicates if they are contained in <path>")
+var force = flag.Bool("force", false, "Actually delete files. Without this options, the files to be deleted are only printed")
+var verbose = flag.Bool("verbose", false, "Output additional information")
+
 func main() {
-	fromFile := flag.String("from-file", "", "Load results file from <path>")
-	toFile := flag.String("to-file", "", "Save results to <path>")
-	deleteDupesIn := flag.String("delete-dupes-in", "", "Delete duplicates if they are contained in <path>")
-	force := flag.Bool("force", false, "Actually delete files. Without this options, the files to be deleted are only printed")
 	flag.Parse()
 
-	fmt.Printf("fromFile: \"%v\"\n", *fromFile)
-	fmt.Printf("toFile: \"%v\"\n", *toFile)
-	fmt.Printf("deleteDupesIn: \"%v\"\n", *deleteDupesIn)
-	fmt.Printf("force: \"%v\"\n", *force)
+	if *verbose {
+		printConfiguration()
+	}
 
 	filesMap := newFilesMap()
 	if *fromFile != "" {
@@ -48,6 +49,20 @@ func main() {
 		ioutil.WriteFile(*toFile, json, 644)
 	}
 
+	for size := range filesMap.FilesBySize {
+		for hash := range filesMap.FilesBySize[size] {
+			duplicateFiles := filesMap.FilesBySize[size][hash]
+			if len(duplicateFiles) <= 1 {
+				continue
+			}
+
+			for _, file := range duplicateFiles {
+				fmt.Println(file)
+			}
+			fmt.Println()
+		}
+	}
+
 	if *deleteDupesIn != "" {
 		deleteIn := filepath.Clean(*deleteDupesIn)
 		for size := range filesMap.FilesBySize {
@@ -57,20 +72,31 @@ func main() {
 					continue
 				}
 
-				fmt.Println("DupeGroup")
 				for _, file := range duplicateFiles {
 					if strings.HasPrefix(filepath.Clean(file), deleteIn) {
-						fmt.Println("d", file)
-					} else {
-						fmt.Println("k", file)
-					}
-					if !*force {
+						fmt.Println("Would delete ", file)
+						if *force {
+							os.Remove(file)
+						}
 					}
 				}
-				fmt.Println("")
 			}
 		}
 	}
+}
+
+func printConfiguration() {
+	fmt.Printf("fromFile: \"%v\"\n", *fromFile)
+	fmt.Printf("toFile: \"%v\"\n", *toFile)
+	fmt.Printf("deleteDupesIn: \"%v\"\n", *deleteDupesIn)
+	fmt.Printf("force: \"%v\"\n", *force)
+	fmt.Println("Searching paths:")
+	for _, path := range flag.Args() {
+		fmt.Println("- ", path)
+	}
+
+	fmt.Println()
+	fmt.Println()
 }
 
 // FilesMap is a struct for listing files by Size and Hash to search for duplicates
