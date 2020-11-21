@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func main() {
@@ -48,21 +49,25 @@ func main() {
 	}
 
 	if *deleteDupesIn != "" {
-		fmt.Println("Deleting", filesMap)
+		deleteIn := filepath.Clean(*deleteDupesIn)
 		for size := range filesMap.FilesBySize {
-			fmt.Println("Deleting")
 			for hash := range filesMap.FilesBySize[size] {
 				duplicateFiles := filesMap.FilesBySize[size][hash]
 				if len(duplicateFiles) <= 1 {
 					continue
 				}
 
-				fmt.Println("Would delete")
+				fmt.Println("DupeGroup")
 				for _, file := range duplicateFiles {
+					if strings.HasPrefix(filepath.Clean(file), deleteIn) {
+						fmt.Println("d", file)
+					} else {
+						fmt.Println("k", file)
+					}
 					if !*force {
-						fmt.Println(file)
 					}
 				}
+				fmt.Println("")
 			}
 		}
 	}
