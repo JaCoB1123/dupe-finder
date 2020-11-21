@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"flag"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -33,7 +32,6 @@ func main() {
 				filesMap.Add(path, info)
 				return nil
 			})
-			fmt.Println(path)
 		}
 	}
 
