@@ -94,7 +94,8 @@ func (fm *FilesMap) HashedWorker(done chan bool) {
 	done <- true
 }
 
-func (fm *FilesMap) WalkDirectories() {
+func (fm *FilesMap) WalkDirectories() int {
+	countFiles := 0
 	for _, path := range flag.Args() {
 		filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
 			if info.IsDir() {
@@ -102,9 +103,11 @@ func (fm *FilesMap) WalkDirectories() {
 			}
 
 			fm.FilesIncoming <- fileEntry{path, info.Size(), ""}
+			countFiles++
 			return nil
 		})
 	}
 
 	close(fm.FilesIncoming)
+	return countFiles
 }

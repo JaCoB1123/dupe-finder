@@ -40,7 +40,7 @@ func main() {
 	if *verbose {
 		printConfiguration()
 	}
-
+	countFiles := 0
 	filesMap := newFilesMap()
 	if *fromFile != "" {
 		byteValue, _ := ioutil.ReadFile(*fromFile)
@@ -60,7 +60,7 @@ func main() {
 
 		go filesMap.HashedWorker(done)
 
-		filesMap.WalkDirectories()
+		countFiles = filesMap.WalkDirectories()
 
 		wg.Wait()
 		close(filesMap.FilesHashed)
@@ -128,17 +128,29 @@ func main() {
 			}
 		}
 	} else {
+
+		countInstances := 0
+		countDupeSets := 0
 		for hash := range filesMap.FilesByHash {
 			duplicateFiles := filesMap.FilesByHash[hash]
 			if len(duplicateFiles) <= 1 {
 				continue
 			}
 
+			countDupeSets++
 			for _, file := range duplicateFiles {
+				countInstances++
 				fmt.Println(file)
 			}
 			fmt.Println()
 		}
+
+		fmt.Println("Statistics:")
+		fmt.Println(countFiles, "Files")
+		fmt.Println(len(filesMap.FilesBySize), "Unique Sizes")
+		fmt.Println(len(filesMap.FilesByHash), "Unique Hashes")
+		fmt.Println(countInstances, "Duplicate Files")
+		fmt.Println(countDupeSets, "Duplicate Sets")
 	}
 }
 
