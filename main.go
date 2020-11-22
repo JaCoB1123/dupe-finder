@@ -6,9 +6,11 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"runtime"
+	"runtime/pprof"
 	"strconv"
 	"strings"
 	"sync"
@@ -21,9 +23,19 @@ var promptForDelete = flag.Bool("delete-prompt", false, "Ask which file to keep 
 var moveToFolder = flag.String("move-files", "", "Move files to <path> instead of deleting them")
 var force = flag.Bool("force", false, "Actually delete files. Without this options, the files to be deleted are only printed")
 var verbose = flag.Bool("verbose", false, "Output additional information")
+var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
 
 func main() {
 	flag.Parse()
+
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
 
 	if *verbose {
 		printConfiguration()
