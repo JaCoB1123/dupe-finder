@@ -11,7 +11,7 @@ import (
 
 // FilesMap is a struct for listing files by Size and Hash to search for duplicates
 type FilesMap struct {
-	FilesBySize map[int64][]string
+	FilesBySize map[int64]string
 
 	FilesByHash map[string][]string
 
@@ -26,7 +26,7 @@ type FilesMap struct {
 
 func newFilesMap() *FilesMap {
 	return &FilesMap{
-		FilesBySize:   map[int64][]string{},
+		FilesBySize:   map[int64]string{},
 		FilesByHash:   map[string][]string{},
 		FilesHashed:   make(chan fileEntry),
 		FilesIncoming: make(chan fileEntry),
@@ -40,16 +40,17 @@ func (fm *FilesMap) IncomingWorker() {
 			fmt.Println("Incoming", file.path)
 		}
 
-		files, ok := fm.FilesBySize[file.size]
+		prevFile, ok := fm.FilesBySize[file.size]
 		if !ok {
-			files = []string{file.path}
-			fm.FilesBySize[file.size] = files
+			fm.FilesBySize[file.size] = file.path
 			continue
 		}
 
-		if len(files) == 1 {
-			fm.FilesHashing <- fileEntry{files[0], file.size, ""}
+		if prevFile != "" {
+			fm.FilesHashing <- fileEntry{prevFile, file.size, ""}
 		}
+
+		fm.FilesBySize[file.size] = ""
 
 		fm.FilesHashing <- file
 	}
