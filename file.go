@@ -1,7 +1,7 @@
 package main
 
 import (
-	"crypto/sha256"
+	"crypto/sha1"
 	"encoding/base64"
 	"io"
 	"os"
@@ -48,7 +48,7 @@ func calculateHash(path string) (string, error) {
 	}
 	defer f.Close()
 
-	h := sha256.New()
+	h := sha1.New()
 	if _, err := io.Copy(h, f); err != nil {
 		return "", err
 	}
