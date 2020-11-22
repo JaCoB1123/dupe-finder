@@ -8,8 +8,10 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 var fromFile = flag.String("from-file", "", "Load results file from <path>")
@@ -36,26 +38,20 @@ func main() {
 		}
 	} else {
 		done := make(chan bool)
-		//for i := 0; i < runtime.GOMAXPROCS(0); i++ {
-		go filesMap.HashingWorker()
-		//}
+		wg := sync.WaitGroup{}
+		for i := 0; i < runtime.GOMAXPROCS(0); i++ {
+			wg.Add(1)
+			go filesMap.HashingWorker(&wg)
+		}
 
 		go filesMap.IncomingWorker()
 
 		go filesMap.HashedWorker(done)
 
-		for _, path := range flag.Args() {
-			filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
-				if info.IsDir() {
-					return nil
-				}
+		filesMap.WalkDirectories()
 
-				filesMap.FilesIncoming <- fileEntry{path, info.Size(), ""}
-				return nil
-			})
-		}
-
-		close(filesMap.FilesIncoming)
+		wg.Wait()
+		close(filesMap.FilesHashed)
 		<-done
 	}
 

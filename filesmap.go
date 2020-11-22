@@ -1,8 +1,11 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 	"sync"
 )
 
@@ -53,7 +56,7 @@ func (fm *FilesMap) IncomingWorker() {
 	close(fm.FilesHashing)
 }
 
-func (fm *FilesMap) HashingWorker() {
+func (fm *FilesMap) HashingWorker(wg *sync.WaitGroup) {
 	for file := range fm.FilesHashing {
 		if *verbose {
 			fmt.Println("Hashing", file.path)
@@ -69,7 +72,7 @@ func (fm *FilesMap) HashingWorker() {
 		file.hash = hash
 		fm.FilesHashed <- file
 	}
-	close(fm.FilesHashed)
+	wg.Done()
 }
 
 func (fm *FilesMap) HashedWorker(done chan bool) {
@@ -88,4 +91,19 @@ func (fm *FilesMap) HashedWorker(done chan bool) {
 	}
 
 	done <- true
+}
+
+func (fm *FilesMap) WalkDirectories() {
+	for _, path := range flag.Args() {
+		filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
+			if info.IsDir() {
+				return nil
+			}
+
+			fm.FilesIncoming <- fileEntry{path, info.Size(), ""}
+			return nil
+		})
+	}
+
+	close(fm.FilesIncoming)
 }
