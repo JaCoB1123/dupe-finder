@@ -40,6 +40,7 @@ func main() {
 	if *verbose {
 		printConfiguration()
 	}
+
 	countFiles := 0
 	filesMap := newFilesMap()
 	if *fromFile != "" {
@@ -80,6 +81,28 @@ func main() {
 				continue
 			}
 
+			hasDupesInFolder := false
+			hasDupesOutsideFolder := false
+			for _, file := range duplicateFiles {
+				fileIsInFolder := strings.HasPrefix(filepath.Clean(file), deleteIn)
+				hasDupesOutsideFolder = hasDupesOutsideFolder || !fileIsInFolder
+				hasDupesInFolder = hasDupesInFolder || fileIsInFolder
+			}
+
+			if !hasDupesInFolder || !hasDupesOutsideFolder {
+				if !hasDupesOutsideFolder {
+					fmt.Println("Not deleting one of the following files, since all would be deleted")
+				}
+				if !hasDupesInFolder {
+					fmt.Println("Not deleting one of the following files, since none are in the selected directory")
+				}
+
+				for _, file := range duplicateFiles {
+					fmt.Println("-", file)
+				}
+				fmt.Println()
+				continue
+			}
 			for _, file := range duplicateFiles {
 				if strings.HasPrefix(filepath.Clean(file), deleteIn) {
 					fmt.Println("Would delete ", file)
@@ -124,11 +147,9 @@ func main() {
 				if *force {
 					remove(file)
 				}
-
 			}
 		}
 	} else {
-
 		countInstances := 0
 		countDupeSets := 0
 		for hash := range filesMap.FilesByHash {
