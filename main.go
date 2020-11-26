@@ -103,6 +103,7 @@ func main() {
 				fmt.Println()
 				continue
 			}
+
 			for _, file := range duplicateFiles {
 				if strings.HasPrefix(filepath.Clean(file), deleteIn) {
 					fmt.Println("Would delete ", file)

@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+
+	"github.com/cheggaaa/pb/v3"
 )
 
 // FilesMap is a struct for listing files by Size and Hash to search for duplicates
@@ -21,6 +23,8 @@ type FilesMap struct {
 
 	FilesHashed chan fileEntry
 
+	progress *pb.ProgressBar
+
 	lock sync.Mutex
 }
 
@@ -29,8 +33,9 @@ func newFilesMap() *FilesMap {
 		FilesBySize:   map[int64]string{},
 		FilesByHash:   map[string][]string{},
 		FilesHashed:   make(chan fileEntry),
-		FilesIncoming: make(chan fileEntry),
+		FilesIncoming: make(chan fileEntry, 100000),
 		FilesHashing:  make(chan fileEntry),
+		progress:      pb.StartNew(0),
 	}
 }
 
@@ -40,6 +45,7 @@ func (fm *FilesMap) IncomingWorker() {
 			fmt.Println("Incoming", file.path)
 		}
 
+		fm.progress.Increment()
 		prevFile, ok := fm.FilesBySize[file.size]
 		if !ok {
 			fm.FilesBySize[file.size] = file.path
@@ -104,6 +110,7 @@ func (fm *FilesMap) WalkDirectories() int {
 
 			fm.FilesIncoming <- fileEntry{path, info.Size(), ""}
 			countFiles++
+			fm.progress.SetTotal(int64(countFiles))
 			return nil
 		})
 	}
