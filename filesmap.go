@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/vbauerster/mpb"
-	"github.com/vbauerster/mpb/decor"
+	"github.com/vbauerster/mpb/v7"
+	"github.com/vbauerster/mpb/v7/decor"
 )
 
 // FilesMap is a struct for listing files by Size and Hash to search for duplicates
@@ -109,16 +109,16 @@ func (fm *FilesMap) HashedWorker(done chan bool) {
 
 func (fm *FilesMap) WalkDirectories() int {
 	countFiles := 0
-	fm.incomingBar = fm.progress.AddSpinner(0, mpb.SpinnerOnLeft,
+	fm.incomingBar = fm.progress.AddSpinner(0,
 		mpb.PrependDecorators(
-			// display our name with one space on the right
-			decor.Name("Finding files"),
-			// replace ETA decorator with "done" message, OnComplete event
-			decor.OnComplete(
-				decor.AverageETA(decor.ET_STYLE_GO, decor.WC{W: 4}), "done",
-			),
+			decor.Name("Finding files "),
+			decor.Elapsed(decor.ET_STYLE_HHMMSS),
 		),
-		mpb.AppendDecorators(decor.AverageSpeed(1, "%d"), decor.TotalNoUnit("%d")))
+		mpb.AppendDecorators(
+			decor.AverageSpeed(0, "%f   "),
+			decor.CountersNoUnit("%d / %d"),
+		),
+	)
 	for _, path := range flag.Args() {
 		filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
 			if info.IsDir() {
