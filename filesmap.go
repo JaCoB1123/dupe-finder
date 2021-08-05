@@ -45,10 +45,6 @@ func newFilesMap() *FilesMap {
 func (fm *FilesMap) IncomingWorker() {
 	for file := range fm.FilesIncoming {
 		fm.incomingBar.Increment()
-		if *minSize > file.size {
-			continue
-		}
-
 		if *verbose {
 			fmt.Println("Incoming", file.path)
 		}
@@ -125,10 +121,13 @@ func (fm *FilesMap) WalkDirectories() int {
 				return nil
 			}
 
+			if *minSize > info.Size() {
+				return nil
+			}
+
 			fm.FilesIncoming <- fileEntry{path, info.Size(), ""}
 			countFiles++
 			fm.incomingBar.SetTotal(int64(countFiles), false)
-
 			return nil
 		})
 	}
