@@ -75,7 +75,7 @@ func (fm *FilesMap) HashingWorker(wg *sync.WaitGroup) {
 		hash, err := calculateHash(file.path)
 
 		if err != nil {
-			log.Printf("Error calculating Hash for %s: %v\n", file, err)
+			log.Printf("Error calculating Hash for %s: %v\n", file.path, err)
 			continue
 		}
 
