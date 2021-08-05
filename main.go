@@ -71,7 +71,7 @@ func main() {
 
 	if *toFile != "" && *fromFile == "" {
 		json, _ := json.MarshalIndent(filesMap.FilesByHash, "", "  ")
-		ioutil.WriteFile(*toFile, json, 644)
+		ioutil.WriteFile(*toFile, json, 0644)
 	}
 
 	if *deleteDupesIn != "" {
