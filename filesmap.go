@@ -92,11 +92,7 @@ func (fm *FilesMap) HashedWorker(done chan bool) {
 		}
 
 		fm.lock.Lock()
-		if _, ok := fm.FilesByHash[file.hash]; ok {
-			fm.FilesByHash[file.hash] = append(fm.FilesByHash[file.hash], file.path)
-		} else {
-			fm.FilesByHash[file.hash] = []string{file.path}
-		}
+		fm.FilesByHash[file.hash] = append(fm.FilesByHash[file.hash], file.path)
 		fm.lock.Unlock()
 	}
 
