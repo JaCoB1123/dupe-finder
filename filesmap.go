@@ -20,8 +20,6 @@ type FilesMap struct {
 
 	FilesHashing chan fileEntry
 
-	FilesIncoming chan fileEntry
-
 	FilesHashed chan fileEntry
 
 	progress *mpb.Progress
@@ -33,37 +31,12 @@ type FilesMap struct {
 
 func newFilesMap() *FilesMap {
 	return &FilesMap{
-		FilesBySize:   map[int64]string{},
-		FilesByHash:   map[string][]string{},
-		FilesHashed:   make(chan fileEntry),
-		FilesIncoming: make(chan fileEntry, 100000),
-		FilesHashing:  make(chan fileEntry),
-		progress:      mpb.New(mpb.WithWidth(64)),
+		FilesBySize:  map[int64]string{},
+		FilesByHash:  map[string][]string{},
+		FilesHashed:  make(chan fileEntry, 100000),
+		FilesHashing: make(chan fileEntry),
+		progress:     mpb.New(mpb.WithWidth(64)),
 	}
-}
-
-func (fm *FilesMap) IncomingWorker() {
-	for file := range fm.FilesIncoming {
-		fm.incomingBar.Increment()
-		if *verbose {
-			fmt.Println("Incoming", file.path)
-		}
-
-		prevFile, ok := fm.FilesBySize[file.size]
-		if !ok {
-			fm.FilesBySize[file.size] = file.path
-			continue
-		}
-
-		if prevFile != "" {
-			fm.FilesHashing <- fileEntry{prevFile, file.size, ""}
-		}
-
-		fm.FilesBySize[file.size] = ""
-
-		fm.FilesHashing <- file
-	}
-	close(fm.FilesHashing)
 }
 
 func (fm *FilesMap) HashingWorker(wg *sync.WaitGroup) {
@@ -117,19 +90,37 @@ func (fm *FilesMap) WalkDirectories() int {
 				return nil
 			}
 
-			if *minSize > info.Size() {
+			size := info.Size()
+			if *minSize > size {
 				return nil
 			}
 
-			fm.FilesIncoming <- fileEntry{path, info.Size(), ""}
+			fm.incomingBar.Increment()
 			countFiles++
 			fm.incomingBar.SetTotal(int64(countFiles), false)
+			if *verbose {
+				fmt.Println("Incoming", path)
+			}
+
+			prevFile, ok := fm.FilesBySize[size]
+			if !ok {
+				fm.FilesBySize[size] = path
+				return nil
+			}
+
+			if prevFile != "" {
+				fm.FilesHashing <- fileEntry{prevFile, size, ""}
+			}
+
+			fm.FilesBySize[size] = ""
+
+			fm.FilesHashing <- fileEntry{path, info.Size(), ""}
 			return nil
 		})
 	}
 
 	fm.incomingBar.SetTotal(int64(countFiles), true)
-	close(fm.FilesIncoming)
+	close(fm.FilesHashing)
 	return countFiles
 }
 

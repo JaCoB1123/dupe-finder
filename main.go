@@ -58,8 +58,6 @@ func main() {
 			go filesMap.HashingWorker(&wg)
 		}
 
-		go filesMap.IncomingWorker()
-
 		go filesMap.HashedWorker(done)
 
 		countFiles = filesMap.WalkDirectories()
