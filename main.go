@@ -21,6 +21,7 @@ var toFile = flag.String("to-file", "", "Save results to <path>")
 var deleteDupesIn = flag.String("delete-dupes-in", "", "Delete duplicates if they are contained in <path>")
 var promptForDelete = flag.Bool("delete-prompt", false, "Ask which file to keep for each dupe-set")
 var moveToFolder = flag.String("move-files", "", "Move files to <path> instead of deleting them")
+var minSize = flag.Int64("min-size", -1, "Ignore all files smaller than <size> in Bytes")
 var force = flag.Bool("force", false, "Actually delete files. Without this options, the files to be deleted are only printed")
 var verbose = flag.Bool("verbose", false, "Output additional information")
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
@@ -188,10 +189,4 @@ func printConfiguration() {
 
 	fmt.Println()
 	fmt.Println()
-}
-
-type fileEntry struct {
-	path string
-	size int64
-	hash string
 }
