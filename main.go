@@ -14,6 +14,9 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/vbauerster/mpb/v7"
+	"github.com/vbauerster/mpb/v7/decor"
 )
 
 var fromFile = flag.String("from-file", "", "Load results file from <path>")
@@ -51,6 +54,27 @@ func main() {
 			panic(err)
 		}
 	} else {
+		filesMap.incomingBar = filesMap.progress.AddSpinner(0,
+			mpb.PrependDecorators(
+				decor.Name("Finding files "),
+				decor.Elapsed(decor.ET_STYLE_HHMMSS),
+			),
+			mpb.AppendDecorators(
+				decor.AverageSpeed(0, "%8.2f"),
+				decor.Name("   "),
+				decor.CurrentNoUnit("%5d"),
+			),
+		)
+		filesMap.hashingBar = filesMap.progress.AddBar(0,
+			mpb.PrependDecorators(
+				decor.Name("Hashing files "),
+				decor.Elapsed(decor.ET_STYLE_HHMMSS),
+			),
+			mpb.AppendDecorators(
+				decor.AverageSpeed(decor.UnitKiB, "%23.2f"),
+				decor.Name("   "),
+				decor.CurrentKibiByte("%5d"),
+			))
 		done := make(chan bool)
 		wg := sync.WaitGroup{}
 		for i := 0; i < runtime.GOMAXPROCS(0); i++ {
