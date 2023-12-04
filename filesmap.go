@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/vbauerster/mpb/v7"
@@ -86,6 +87,10 @@ func (fm *FilesMap) WalkDirectories() int {
 			size := info.Size()
 			if *minSize > size {
 				return nil
+			}
+
+			if !strings.HasSuffix(path, ".jpg") {
+				size = 123456789123456
 			}
 
 			fm.incomingBar.Increment()

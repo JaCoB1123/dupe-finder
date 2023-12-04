@@ -3,10 +3,14 @@ package main
 import (
 	"crypto/sha1"
 	"encoding/base64"
+	"image/jpeg"
 	"io"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
+
+	"github.com/corona10/goimagehash"
 )
 
 func remove(path string) {
@@ -47,6 +51,19 @@ func calculateHash(path string) (string, error) {
 		return "", err
 	}
 	defer f.Close()
+
+	if strings.HasSuffix(path, ".jpg") {
+		img, err := jpeg.Decode(f)
+		if err != nil {
+			return "", err
+		}
+		hash, err := goimagehash.DifferenceHash(img)
+		if err != nil {
+			return "", err
+		}
+
+		return hash.ToString(), nil
+	}
 
 	h := sha1.New()
 	if _, err := io.Copy(h, f); err != nil {
