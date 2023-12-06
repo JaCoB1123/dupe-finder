@@ -174,15 +174,15 @@ func main() {
 		countInstances := 0
 		countDupeSets := 0
 
-		for fileIndex := range filesMap.Images {
+		for len(filesMap.Images) > 0 {
+			file := filesMap.Images[0]
+			newLength := len(filesMap.Images) - 1
+			filesMap.Images[0] = filesMap.Images[newLength]
+			filesMap.Images = filesMap.Images[:newLength]
 			var currentCluster []imageEntry
-			file := filesMap.Images[fileIndex]
-			currentCluster = append(currentCluster, filesMap.Images[fileIndex])
-			for otherIndex := range filesMap.Images {
-				if fileIndex == otherIndex {
-					continue
-				}
 
+			currentCluster = append(currentCluster, file)
+			for otherIndex := range filesMap.Images {
 				otherFile := filesMap.Images[otherIndex]
 				var distance = hamming.Uint64(file.imageHash, otherFile.imageHash)
 				if distance > 5 {
