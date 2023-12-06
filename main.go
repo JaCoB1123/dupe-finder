@@ -188,6 +188,22 @@ func main() {
 		countInstances := 0
 		countDupeSets := 0
 
+		fmt.Println("Files that are binary identical:")
+		for hash := range filesMap.FilesByHash {
+			duplicateFiles := filesMap.FilesByHash[hash]
+			if len(duplicateFiles) <= 1 {
+				continue
+			}
+
+			countDupeSets++
+			for _, file := range duplicateFiles {
+				countInstances++
+				fmt.Println(file)
+			}
+			fmt.Println()
+		}
+
+		fmt.Println("Images that are similar:")
 		for len(filesMap.Images) > 0 {
 			file := filesMap.Images[0]
 			filesMap.Images = slices.Delete(filesMap.Images, 0, 1)
