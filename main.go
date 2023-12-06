@@ -9,6 +9,8 @@ import (
 	"runtime/pprof"
 	"sync"
 
+	"slices"
+
 	"github.com/steakknife/hamming"
 	"github.com/vbauerster/mpb/v7"
 	"github.com/vbauerster/mpb/v7/decor"
@@ -188,19 +190,18 @@ func main() {
 
 		for len(filesMap.Images) > 0 {
 			file := filesMap.Images[0]
-			newLength := len(filesMap.Images) - 1
-			filesMap.Images[0] = filesMap.Images[newLength]
-			filesMap.Images = filesMap.Images[:newLength]
+			filesMap.Images = slices.Delete(filesMap.Images, 0, 1)
 			var currentCluster []imageEntry
 
 			currentCluster = append(currentCluster, file)
-			for otherIndex := range filesMap.Images {
+			for otherIndex := len(filesMap.Images) - 1; otherIndex >= 0; otherIndex-- {
 				otherFile := filesMap.Images[otherIndex]
 				var distance = hamming.Uint64(file.imageHash, otherFile.imageHash)
 				if distance > 5 {
 					continue
 				}
 
+				filesMap.Images = slices.Delete(filesMap.Images, otherIndex, otherIndex+1)
 				if len(currentCluster) == 1 {
 					fmt.Println(currentCluster[0].path)
 					countDupeSets++
