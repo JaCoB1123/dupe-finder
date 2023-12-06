@@ -33,6 +33,8 @@ type FilesMap struct {
 
 	fileHashingBar *mpb.Bar
 
+	imageHashingBar *mpb.Bar
+
 	lock sync.Mutex
 }
 
@@ -75,7 +77,7 @@ func (fm *FilesMap) ImageHashingWorker(wg *sync.WaitGroup) {
 		}
 
 		hash, err := calculateImageHash(file.path)
-		//fm.hashingBar.IncrInt64(file.size)
+		fm.imageHashingBar.IncrInt64(file.size)
 
 		if err != nil {
 			log.Printf("Error calculating Hash for image %s: %v\n", file.path, err)

@@ -69,7 +69,19 @@ func main() {
 				decor.AverageSpeed(decor.UnitKiB, "%23.2f"),
 				decor.Name("   "),
 				decor.CurrentKibiByte("%5d"),
-			))
+			),
+		)
+		filesMap.imageHashingBar = filesMap.progress.AddBar(0,
+			mpb.PrependDecorators(
+				decor.Name("Hashing images "),
+				decor.Elapsed(decor.ET_STYLE_HHMMSS),
+			),
+			mpb.AppendDecorators(
+				decor.AverageSpeed(decor.UnitKiB, "%23.2f"),
+				decor.Name("   "),
+				decor.CurrentKibiByte("%5d"),
+			),
+		)
 		done := make(chan bool)
 		wg := sync.WaitGroup{}
 		for i := 0; i < runtime.GOMAXPROCS(0); i++ {
