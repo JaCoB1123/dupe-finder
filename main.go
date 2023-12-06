@@ -40,7 +40,7 @@ func main() {
 		printConfiguration()
 	}
 
-	countFiles := 0
+	var countFiles int64 = 0
 	filesMap := newFilesMap()
 	if *fromFile != "" {
 		//		byteValue, _ := ioutil.ReadFile(*fromFile)
