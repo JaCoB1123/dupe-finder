@@ -131,6 +131,7 @@ func (fm *FilesMap) WalkDirectories() int64 {
 
 	fm.incomingBar.SetTotal(int64(countFiles), true)
 	close(fm.FilesHashing)
+	close(fm.ImagesHashing)
 	return countFiles
 }
 
