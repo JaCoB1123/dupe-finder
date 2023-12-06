@@ -54,21 +54,15 @@ func calculateImageHash(path string) (uint64, error) {
 	}
 	defer f.Close()
 
-	fmt.Println("jh:", path, err)
 	img, _, err := image.Decode(f)
-	fmt.Println("oh:", path, err)
 	if err != nil {
-		fmt.Println("kh:", path, err)
 		return 0, err
 	}
-	fmt.Println("lh:", path, err)
 	hash, err := goimagehash.DifferenceHash(img)
 	if err != nil {
-		fmt.Println("mh:", path, err)
 		return 0, err
 	}
 
-	fmt.Println("nh:", path, err)
 	fmt.Println(path, hash.ToString())
 	return hash.GetHash(), nil
 }

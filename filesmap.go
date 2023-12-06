@@ -55,6 +55,8 @@ func (fm *FilesMap) FileHashingWorker(wg *sync.WaitGroup) {
 		}
 
 		hash, err := calculateFileHash(file.path)
+		fm.hashingBar.IncrInt64(file.size)
+		fm.FilesHashed <- file
 
 		if err != nil {
 			log.Printf("Error calculating Hash file for %s: %v\n", file.path, err)
@@ -62,8 +64,6 @@ func (fm *FilesMap) FileHashingWorker(wg *sync.WaitGroup) {
 		}
 
 		file.hash = hash
-		fm.hashingBar.IncrInt64(file.size)
-		fm.FilesHashed <- file
 	}
 	wg.Done()
 }
@@ -75,6 +75,9 @@ func (fm *FilesMap) ImageHashingWorker(wg *sync.WaitGroup) {
 		}
 
 		hash, err := calculateImageHash(file.path)
+		fm.hashingBar.IncrInt64(file.size)
+		fm.ImagesHashed <- file
+
 		if err != nil {
 			log.Printf("Error calculating Hash for image %s: %v\n", file.path, err)
 			continue
@@ -101,8 +104,8 @@ func (fm *FilesMap) HashedWorker(done chan bool) {
 	done <- true
 }
 
-func (fm *FilesMap) WalkDirectories() int {
-	countFiles := 0
+func (fm *FilesMap) WalkDirectories() int64 {
+	var countFiles int64 = 0
 	sumSize := int64(0)
 	for _, path := range flag.Args() {
 		filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
@@ -115,14 +118,13 @@ func (fm *FilesMap) WalkDirectories() int {
 				return nil
 			}
 
-			fmt.Println("Walked past", path)
-
-			sumSize += size
-			countFiles++
+			fm.hashImage(path, size)
+			count := fm.hashFile(path, size)
+			sumSize += size * count
+			countFiles += count
 			fm.incomingBar.SetTotal(int64(countFiles), false)
 			fm.hashingBar.SetTotal(int64(sumSize), false)
-			fm.hashFile(path, size)
-			fm.hashImage(path, size)
+			fmt.Printf("count: %d, size: %d\n", countFiles, sumSize)
 			return nil
 		})
 	}
@@ -132,15 +134,11 @@ func (fm *FilesMap) WalkDirectories() int {
 	return countFiles
 }
 
-func (fm *FilesMap) hashFile(path string, size int64) {
+func (fm *FilesMap) hashFile(path string, size int64) int64 {
 	prevFile, ok := fm.FilesBySize[size]
 	if !ok {
 		fm.FilesBySize[size] = path
-		return
-	}
-
-	if prevFile != "" {
-		fm.FilesHashing <- fileEntry{prevFile, size, ""}
+		return 0
 	}
 
 	fm.FilesBySize[size] = ""
@@ -150,6 +148,12 @@ func (fm *FilesMap) hashFile(path string, size int64) {
 	}
 
 	fm.FilesHashing <- fileEntry{path, size, ""}
+	if prevFile != "" {
+		fm.FilesHashing <- fileEntry{prevFile, size, ""}
+		return 2
+	}
+
+	return 1
 }
 
 func (fm *FilesMap) hashImage(path string, size int64) {
