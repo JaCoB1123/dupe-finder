@@ -1,20 +1,15 @@
 package main
 
 import (
-	"bufio"
-	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
-	"path/filepath"
 	"runtime"
 	"runtime/pprof"
-	"strconv"
-	"strings"
 	"sync"
 
+	"github.com/steakknife/hamming"
 	"github.com/vbauerster/mpb/v7"
 	"github.com/vbauerster/mpb/v7/decor"
 )
@@ -48,11 +43,11 @@ func main() {
 	countFiles := 0
 	filesMap := newFilesMap()
 	if *fromFile != "" {
-		byteValue, _ := ioutil.ReadFile(*fromFile)
-		err := json.Unmarshal(byteValue, &filesMap.FilesByHash)
-		if err != nil {
-			panic(err)
-		}
+		//		byteValue, _ := ioutil.ReadFile(*fromFile)
+		//		err := json.Unmarshal(byteValue, &filesMap.FilesByHash)
+		//		if err != nil {
+		//			panic(err)
+		//		}
 	} else {
 		filesMap.incomingBar = filesMap.progress.AddSpinner(0,
 			mpb.PrependDecorators(
@@ -92,108 +87,124 @@ func main() {
 	}
 
 	if *toFile != "" && *fromFile == "" {
-		json, _ := json.MarshalIndent(filesMap.FilesByHash, "", "  ")
-		ioutil.WriteFile(*toFile, json, 0644)
+		//		json, _ := json.MarshalIndent(filesMap.FilesByHash, "", "  ")
+		//		ioutil.WriteFile(*toFile, json, 0644)
 	}
 
 	if *deleteDupesIn != "" {
-		deleteIn := filepath.Clean(*deleteDupesIn)
-		for hash := range filesMap.FilesByHash {
-			duplicateFiles := filesMap.FilesByHash[hash]
-			if len(duplicateFiles) <= 1 {
-				continue
-			}
-
-			hasDupesInFolder := false
-			hasDupesOutsideFolder := false
-			for _, file := range duplicateFiles {
-				fileIsInFolder := strings.HasPrefix(filepath.Clean(file), deleteIn)
-				hasDupesOutsideFolder = hasDupesOutsideFolder || !fileIsInFolder
-				hasDupesInFolder = hasDupesInFolder || fileIsInFolder
-			}
-
-			if !hasDupesInFolder || !hasDupesOutsideFolder {
-				if !hasDupesOutsideFolder {
-					fmt.Println("Not deleting one of the following files, since all would be deleted")
-				}
-				if !hasDupesInFolder {
-					fmt.Println("Not deleting one of the following files, since none are in the selected directory")
-				}
-
-				for _, file := range duplicateFiles {
-					fmt.Println("-", file)
-				}
-				fmt.Println()
-				continue
-			}
-
-			for _, file := range duplicateFiles {
-				if strings.HasPrefix(filepath.Clean(file), deleteIn) {
-					fmt.Println("Would delete ", file)
-					if *force {
-						remove(file)
+		/*		deleteIn := filepath.Clean(*deleteDupesIn)
+				for hash := range filesMap.FilesByHash {
+					duplicateFiles := filesMap.FilesByHash[hash]
+					if len(duplicateFiles) <= 1 {
+						continue
 					}
-				}
-			}
-		}
+
+					hasDupesInFolder := false
+					hasDupesOutsideFolder := false
+					for _, file := range duplicateFiles {
+						fileIsInFolder := strings.HasPrefix(filepath.Clean(file), deleteIn)
+						hasDupesOutsideFolder = hasDupesOutsideFolder || !fileIsInFolder
+						hasDupesInFolder = hasDupesInFolder || fileIsInFolder
+					}
+
+					if !hasDupesInFolder || !hasDupesOutsideFolder {
+						if !hasDupesOutsideFolder {
+							fmt.Println("Not deleting one of the following files, since all would be deleted")
+						}
+						if !hasDupesInFolder {
+							fmt.Println("Not deleting one of the following files, since none are in the selected directory")
+						}
+
+						for _, file := range duplicateFiles {
+							fmt.Println("-", file)
+						}
+						fmt.Println()
+						continue
+					}
+
+					for _, file := range duplicateFiles {
+						if strings.HasPrefix(filepath.Clean(file), deleteIn) {
+							fmt.Println("Would delete ", file)
+							if *force {
+								remove(file)
+							}
+						}
+					}
+				}*/
 	} else if *promptForDelete {
-		reader := bufio.NewReader(os.Stdin)
-		for hash := range filesMap.FilesByHash {
-			duplicateFiles := filesMap.FilesByHash[hash]
-			if len(duplicateFiles) <= 1 {
-				continue
-			}
+		/*		reader := bufio.NewReader(os.Stdin)
+				for hash := range filesMap.FilesByHash {
+					duplicateFiles := filesMap.FilesByHash[hash]
+					if len(duplicateFiles) <= 1 {
+						continue
+					}
 
-			fmt.Print("\033[H\033[2J")
-			for i, file := range duplicateFiles {
-				fmt.Println(i+1, file)
-			}
+					fmt.Print("\033[H\033[2J")
+					for i, file := range duplicateFiles {
+						fmt.Println(i+1, file)
+					}
 
-			fmt.Printf("Which file to keep? ")
-			input, err := reader.ReadString('\n')
-			if err != nil {
-				fmt.Println("Invalid input")
-				continue
-			}
+					fmt.Printf("Which file to keep? ")
+					input, err := reader.ReadString('\n')
+					if err != nil {
+						fmt.Println("Invalid input")
+						continue
+					}
 
-			input = strings.TrimRight(input, "\n\r")
-			intInput, err := strconv.Atoi(input)
-			if err != nil || intInput > len(duplicateFiles) || intInput < 1 {
-				fmt.Println("Invalid input")
-				continue
-			}
+					input = strings.TrimRight(input, "\n\r")
+					intInput, err := strconv.Atoi(input)
+					if err != nil || intInput > len(duplicateFiles) || intInput < 1 {
+						fmt.Println("Invalid input")
+						continue
+					}
 
-			for i, file := range duplicateFiles {
-				if i+1 == intInput {
-					continue
-				}
+					for i, file := range duplicateFiles {
+						if i+1 == intInput {
+							continue
+						}
 
-				if *force {
-					remove(file)
-				}
-			}
-		}
+						if *force {
+							remove(file)
+						}
+					}
+				}*/
 	} else {
 		countInstances := 0
 		countDupeSets := 0
-		for hash := range filesMap.FilesByHash {
-			duplicateFiles := filesMap.FilesByHash[hash]
-			if len(duplicateFiles) <= 1 {
+
+		for fileIndex := range filesMap.Files {
+			var currentCluster []fileEntry
+			file := filesMap.Files[fileIndex]
+			currentCluster = append(currentCluster, filesMap.Files[fileIndex])
+			for otherIndex := range filesMap.Files {
+				if fileIndex == otherIndex {
+					continue
+				}
+				otherFile := filesMap.Files[otherIndex]
+				var distance = hamming.Uint64(file.hash, otherFile.hash)
+				if distance > 5 {
+					continue
+				}
+
+				currentCluster = append(currentCluster, otherFile)
+			}
+
+			if len(currentCluster) <= 1 {
 				continue
 			}
 
 			countDupeSets++
-			for _, file := range duplicateFiles {
+			for _, file := range currentCluster {
 				countInstances++
-				fmt.Println(file)
+				fmt.Println(file.path)
 			}
 			fmt.Println()
 		}
 
 		fmt.Println("Statistics:")
 		fmt.Println(countFiles, "Files")
-		fmt.Println(len(filesMap.FilesBySize), "Unique Sizes")
-		fmt.Println(len(filesMap.FilesByHash), "Unique Hashes")
+		//		fmt.Println(len(filesMap.FilesBySize), "Unique Sizes")
+		//		fmt.Println(len(filesMap.FilesByHash), "Unique Hashes")
 		fmt.Println(countInstances, "Duplicate Files")
 		fmt.Println(countDupeSets, "Duplicate Sets")
 	}

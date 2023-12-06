@@ -1,10 +1,7 @@
 package main
 
 import (
-	"crypto/sha1"
-	"encoding/base64"
 	"image/jpeg"
-	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -45,30 +42,31 @@ func moveButDontOvewrite(path string, targetPath string) {
 	}
 }
 
-func calculateHash(path string) (string, error) {
+func calculateHash(path string) (uint64, error) {
 	f, err := os.Open(path)
 	if err != nil {
-		return "", err
+		return 0, err
 	}
 	defer f.Close()
 
 	if strings.HasSuffix(path, ".jpg") {
 		img, err := jpeg.Decode(f)
 		if err != nil {
-			return "", err
+			return 0, err
 		}
 		hash, err := goimagehash.DifferenceHash(img)
 		if err != nil {
-			return "", err
+			return 0, err
 		}
 
-		return hash.ToString(), nil
+		return hash.GetHash(), nil
 	}
 
-	h := sha1.New()
-	if _, err := io.Copy(h, f); err != nil {
-		return "", err
-	}
+	/*	h := sha1.New()
+		if _, err := io.Copy(h, f); err != nil {
+			return 0, err
+		}
 
-	return base64.RawStdEncoding.EncodeToString(h.Sum(nil)), nil
+		return base64.RawStdEncoding.EncodeToString(h.Sum(nil)), nil*/
+	return 0, nil
 }

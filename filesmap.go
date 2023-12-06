@@ -14,9 +14,7 @@ import (
 
 // FilesMap is a struct for listing files by Size and Hash to search for duplicates
 type FilesMap struct {
-	FilesBySize map[int64]string
-
-	FilesByHash map[string][]string
+	Files []fileEntry
 
 	FilesHashing chan fileEntry
 
@@ -33,8 +31,6 @@ type FilesMap struct {
 
 func newFilesMap() *FilesMap {
 	return &FilesMap{
-		FilesBySize:  map[int64]string{},
-		FilesByHash:  map[string][]string{},
 		FilesHashed:  make(chan fileEntry, 100000),
 		FilesHashing: make(chan fileEntry),
 		progress:     mpb.New(mpb.WithWidth(64)),
@@ -68,7 +64,7 @@ func (fm *FilesMap) HashedWorker(done chan bool) {
 		}
 
 		fm.lock.Lock()
-		fm.FilesByHash[file.hash] = append(fm.FilesByHash[file.hash], file.path)
+		fm.Files = append(fm.Files, file)
 		fm.lock.Unlock()
 	}
 
@@ -100,22 +96,9 @@ func (fm *FilesMap) WalkDirectories() int {
 				fmt.Println("Incoming", path)
 			}
 
-			prevFile, ok := fm.FilesBySize[size]
-			if !ok {
-				fm.FilesBySize[size] = path
-				return nil
-			}
-
-			if prevFile != "" {
-				sumSize += size
-				fm.FilesHashing <- fileEntry{prevFile, size, ""}
-			}
-
-			fm.FilesBySize[size] = ""
-
 			sumSize += size
 			fm.hashingBar.SetTotal(int64(sumSize), false)
-			fm.FilesHashing <- fileEntry{path, info.Size(), ""}
+			fm.FilesHashing <- fileEntry{path, info.Size(), 0}
 			return nil
 		})
 	}
@@ -128,5 +111,5 @@ func (fm *FilesMap) WalkDirectories() int {
 type fileEntry struct {
 	path string
 	size int64
-	hash string
+	hash uint64
 }
