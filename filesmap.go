@@ -127,14 +127,13 @@ func (fm *FilesMap) WalkDirectories() int64 {
 			if *minSize > size {
 				return nil
 			}
+			countFiles++
 
 			fm.hashImage(path, size)
 			count := fm.hashFile(path, size)
 			sumSize += size * count
-			countFiles += count
 			fm.incomingBar.SetTotal(int64(countFiles), false)
 			fm.hashingBar.SetTotal(int64(sumSize), false)
-			fmt.Printf("count: %d, size: %d\n", countFiles, sumSize)
 			return nil
 		})
 	}
