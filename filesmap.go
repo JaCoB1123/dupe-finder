@@ -101,6 +101,16 @@ func (fm *FilesMap) HashedWorker(done chan bool) {
 		fm.lock.Unlock()
 	}
 
+	for file := range fm.ImagesHashed {
+		if *verbose {
+			fmt.Println("Finishing", file.path)
+		}
+
+		fm.lock.Lock()
+		fm.Images = append(fm.Images, file)
+		fm.lock.Unlock()
+	}
+
 	done <- true
 }
 
