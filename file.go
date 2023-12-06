@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/sha1"
 	"encoding/base64"
-	"fmt"
 	"image"
 	_ "image/jpeg"
 	_ "image/png"
@@ -63,7 +62,6 @@ func calculateImageHash(path string) (uint64, error) {
 		return 0, err
 	}
 
-	fmt.Println(path, hash.ToString())
 	return hash.GetHash(), nil
 }
 
@@ -80,6 +78,5 @@ func calculateFileHash(path string) (string, error) {
 	}
 
 	stringHash := base64.RawStdEncoding.EncodeToString(h.Sum(nil))
-	fmt.Println(path, stringHash)
 	return stringHash, nil
 }
