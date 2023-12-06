@@ -31,7 +31,7 @@ type FilesMap struct {
 
 	incomingBar *mpb.Bar
 
-	hashingBar *mpb.Bar
+	fileHashingBar *mpb.Bar
 
 	lock sync.Mutex
 }
@@ -55,7 +55,7 @@ func (fm *FilesMap) FileHashingWorker(wg *sync.WaitGroup) {
 		}
 
 		hash, err := calculateFileHash(file.path)
-		fm.hashingBar.IncrInt64(file.size)
+		fm.fileHashingBar.IncrInt64(file.size)
 		fm.FilesHashed <- file
 
 		if err != nil {
@@ -75,8 +75,7 @@ func (fm *FilesMap) ImageHashingWorker(wg *sync.WaitGroup) {
 		}
 
 		hash, err := calculateImageHash(file.path)
-		fm.hashingBar.IncrInt64(file.size)
-		fm.ImagesHashed <- file
+		//fm.hashingBar.IncrInt64(file.size)
 
 		if err != nil {
 			log.Printf("Error calculating Hash for image %s: %v\n", file.path, err)
@@ -84,7 +83,6 @@ func (fm *FilesMap) ImageHashingWorker(wg *sync.WaitGroup) {
 		}
 
 		file.imageHash = hash
-		fm.hashingBar.IncrInt64(file.size)
 		fm.ImagesHashed <- file
 	}
 	wg.Done()
@@ -127,13 +125,16 @@ func (fm *FilesMap) WalkDirectories() int64 {
 			if *minSize > size {
 				return nil
 			}
+
 			countFiles++
+			fm.incomingBar.SetTotal(int64(countFiles), false)
 
 			fm.hashImage(path, size)
 			count := fm.hashFile(path, size)
-			sumSize += size * count
-			fm.incomingBar.SetTotal(int64(countFiles), false)
-			fm.hashingBar.SetTotal(int64(sumSize), false)
+			if count > 0 {
+				sumSize += size * count
+				fm.fileHashingBar.SetTotal(int64(sumSize), false)
+			}
 			return nil
 		})
 	}

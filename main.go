@@ -60,7 +60,7 @@ func main() {
 				decor.CurrentNoUnit("%5d"),
 			),
 		)
-		filesMap.hashingBar = filesMap.progress.AddBar(0,
+		filesMap.fileHashingBar = filesMap.progress.AddBar(0,
 			mpb.PrependDecorators(
 				decor.Name("Hashing files "),
 				decor.Elapsed(decor.ET_STYLE_HHMMSS),
