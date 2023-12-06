@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 
 	"github.com/vbauerster/mpb/v7"
@@ -14,11 +13,19 @@ import (
 
 // FilesMap is a struct for listing files by Size and Hash to search for duplicates
 type FilesMap struct {
-	Files []fileEntry
+	Images []imageEntry
+
+	FilesBySize map[int64]string
+
+	FilesByHash map[string][]string
 
 	FilesHashing chan fileEntry
 
 	FilesHashed chan fileEntry
+
+	ImagesHashing chan imageEntry
+
+	ImagesHashed chan imageEntry
 
 	progress *mpb.Progress
 
@@ -31,28 +38,51 @@ type FilesMap struct {
 
 func newFilesMap() *FilesMap {
 	return &FilesMap{
-		FilesHashed:  make(chan fileEntry, 100000),
-		FilesHashing: make(chan fileEntry),
-		progress:     mpb.New(mpb.WithWidth(64)),
+		FilesBySize:   map[int64]string{},
+		FilesByHash:   map[string][]string{},
+		FilesHashed:   make(chan fileEntry, 100000),
+		FilesHashing:  make(chan fileEntry),
+		ImagesHashed:  make(chan imageEntry, 100000),
+		ImagesHashing: make(chan imageEntry),
+		progress:      mpb.New(mpb.WithWidth(64)),
 	}
 }
 
-func (fm *FilesMap) HashingWorker(wg *sync.WaitGroup) {
+func (fm *FilesMap) FileHashingWorker(wg *sync.WaitGroup) {
 	for file := range fm.FilesHashing {
 		if *verbose {
-			fmt.Println("Hashing", file.path)
+			fmt.Println("Hashing file", file.path)
 		}
 
-		hash, err := calculateHash(file.path)
+		hash, err := calculateFileHash(file.path)
 
 		if err != nil {
-			log.Printf("Error calculating Hash for %s: %v\n", file.path, err)
+			log.Printf("Error calculating Hash file for %s: %v\n", file.path, err)
 			continue
 		}
 
 		file.hash = hash
 		fm.hashingBar.IncrInt64(file.size)
 		fm.FilesHashed <- file
+	}
+	wg.Done()
+}
+
+func (fm *FilesMap) ImageHashingWorker(wg *sync.WaitGroup) {
+	for file := range fm.ImagesHashing {
+		if *verbose {
+			fmt.Println("Hashing image", file.path)
+		}
+
+		hash, err := calculateImageHash(file.path)
+		if err != nil {
+			log.Printf("Error calculating Hash for image %s: %v\n", file.path, err)
+			continue
+		}
+
+		file.imageHash = hash
+		fm.hashingBar.IncrInt64(file.size)
+		fm.ImagesHashed <- file
 	}
 	wg.Done()
 }
@@ -64,7 +94,7 @@ func (fm *FilesMap) HashedWorker(done chan bool) {
 		}
 
 		fm.lock.Lock()
-		fm.Files = append(fm.Files, file)
+		fm.FilesByHash[file.hash] = append(fm.FilesByHash[file.hash], file.path)
 		fm.lock.Unlock()
 	}
 
@@ -85,20 +115,14 @@ func (fm *FilesMap) WalkDirectories() int {
 				return nil
 			}
 
-			if !strings.HasSuffix(path, ".jpg") {
-				size = 123456789123456
-			}
-
-			fm.incomingBar.Increment()
-			countFiles++
-			fm.incomingBar.SetTotal(int64(countFiles), false)
-			if *verbose {
-				fmt.Println("Incoming", path)
-			}
+			fmt.Println("Walked past", path)
 
 			sumSize += size
+			countFiles++
+			fm.incomingBar.SetTotal(int64(countFiles), false)
 			fm.hashingBar.SetTotal(int64(sumSize), false)
-			fm.FilesHashing <- fileEntry{path, info.Size(), 0}
+			fm.hashFile(path, size)
+			fm.hashImage(path, size)
 			return nil
 		})
 	}
@@ -108,8 +132,38 @@ func (fm *FilesMap) WalkDirectories() int {
 	return countFiles
 }
 
+func (fm *FilesMap) hashFile(path string, size int64) {
+	prevFile, ok := fm.FilesBySize[size]
+	if !ok {
+		fm.FilesBySize[size] = path
+		return
+	}
+
+	if prevFile != "" {
+		fm.FilesHashing <- fileEntry{prevFile, size, ""}
+	}
+
+	fm.FilesBySize[size] = ""
+	fm.incomingBar.Increment()
+	if *verbose {
+		fmt.Println("Incoming", path)
+	}
+
+	fm.FilesHashing <- fileEntry{path, size, ""}
+}
+
+func (fm *FilesMap) hashImage(path string, size int64) {
+	fm.ImagesHashing <- imageEntry{path, size, 0}
+}
+
+type imageEntry struct {
+	path      string
+	size      int64
+	imageHash uint64
+}
+
 type fileEntry struct {
 	path string
 	size int64
-	hash uint64
+	hash string
 }

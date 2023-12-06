@@ -1,11 +1,16 @@
 package main
 
 import (
-	"image/jpeg"
+	"crypto/sha1"
+	"encoding/base64"
+	"fmt"
+	"image"
+	_ "image/jpeg"
+	_ "image/png"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 
 	"github.com/corona10/goimagehash"
 )
@@ -42,31 +47,45 @@ func moveButDontOvewrite(path string, targetPath string) {
 	}
 }
 
-func calculateHash(path string) (uint64, error) {
+func calculateImageHash(path string) (uint64, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return 0, err
 	}
 	defer f.Close()
 
-	if strings.HasSuffix(path, ".jpg") {
-		img, err := jpeg.Decode(f)
-		if err != nil {
-			return 0, err
-		}
-		hash, err := goimagehash.DifferenceHash(img)
-		if err != nil {
-			return 0, err
-		}
-
-		return hash.GetHash(), nil
+	fmt.Println("jh:", path, err)
+	img, _, err := image.Decode(f)
+	fmt.Println("oh:", path, err)
+	if err != nil {
+		fmt.Println("kh:", path, err)
+		return 0, err
+	}
+	fmt.Println("lh:", path, err)
+	hash, err := goimagehash.DifferenceHash(img)
+	if err != nil {
+		fmt.Println("mh:", path, err)
+		return 0, err
 	}
 
-	/*	h := sha1.New()
-		if _, err := io.Copy(h, f); err != nil {
-			return 0, err
-		}
+	fmt.Println("nh:", path, err)
+	fmt.Println(path, hash.ToString())
+	return hash.GetHash(), nil
+}
 
-		return base64.RawStdEncoding.EncodeToString(h.Sum(nil)), nil*/
-	return 0, nil
+func calculateFileHash(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	h := sha1.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+
+	stringHash := base64.RawStdEncoding.EncodeToString(h.Sum(nil))
+	fmt.Println(path, stringHash)
+	return stringHash, nil
 }

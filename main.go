@@ -73,8 +73,9 @@ func main() {
 		done := make(chan bool)
 		wg := sync.WaitGroup{}
 		for i := 0; i < runtime.GOMAXPROCS(0); i++ {
-			wg.Add(1)
-			go filesMap.HashingWorker(&wg)
+			wg.Add(2)
+			go filesMap.ImageHashingWorker(&wg)
+			go filesMap.FileHashingWorker(&wg)
 		}
 
 		go filesMap.HashedWorker(done)
@@ -172,17 +173,17 @@ func main() {
 		countInstances := 0
 		countDupeSets := 0
 
-		for fileIndex := range filesMap.Files {
-			var currentCluster []fileEntry
-			file := filesMap.Files[fileIndex]
-			currentCluster = append(currentCluster, filesMap.Files[fileIndex])
-			for otherIndex := range filesMap.Files {
+		for fileIndex := range filesMap.Images {
+			var currentCluster []imageEntry
+			file := filesMap.Images[fileIndex]
+			currentCluster = append(currentCluster, filesMap.Images[fileIndex])
+			for otherIndex := range filesMap.Images {
 				if fileIndex == otherIndex {
 					continue
 				}
 
-				otherFile := filesMap.Files[otherIndex]
-				var distance = hamming.Uint64(file.hash, otherFile.hash)
+				otherFile := filesMap.Images[otherIndex]
+				var distance = hamming.Uint64(file.imageHash, otherFile.imageHash)
 				if distance > 5 {
 					continue
 				}
@@ -206,8 +207,8 @@ func main() {
 
 		fmt.Println("Statistics:")
 		fmt.Println(countFiles, "Files")
-		//		fmt.Println(len(filesMap.FilesBySize), "Unique Sizes")
-		//		fmt.Println(len(filesMap.FilesByHash), "Unique Hashes")
+		fmt.Println(len(filesMap.FilesBySize), "Unique Sizes")
+		fmt.Println(len(filesMap.FilesByHash), "Unique Hashes")
 		fmt.Println(countInstances, "Duplicate Files")
 		fmt.Println(countDupeSets, "Duplicate Sets")
 	}
