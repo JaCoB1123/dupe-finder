@@ -180,24 +180,27 @@ func main() {
 				if fileIndex == otherIndex {
 					continue
 				}
+
 				otherFile := filesMap.Files[otherIndex]
 				var distance = hamming.Uint64(file.hash, otherFile.hash)
 				if distance > 5 {
 					continue
 				}
 
+				if len(currentCluster) == 1 {
+					fmt.Println(currentCluster[0].path)
+					countDupeSets++
+					countInstances++
+				}
 				currentCluster = append(currentCluster, otherFile)
+				fmt.Println(otherFile.path, distance)
+				countInstances++
 			}
 
 			if len(currentCluster) <= 1 {
 				continue
 			}
 
-			countDupeSets++
-			for _, file := range currentCluster {
-				countInstances++
-				fmt.Println(file.path)
-			}
 			fmt.Println()
 		}
 
