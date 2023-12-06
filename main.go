@@ -84,6 +84,7 @@ func main() {
 
 		wg.Wait()
 		close(filesMap.FilesHashed)
+		close(filesMap.ImagesHashed)
 		<-done
 	}
 
