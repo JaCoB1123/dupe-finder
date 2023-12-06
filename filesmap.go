@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/vbauerster/mpb/v7"
+	"github.com/vbauerster/mpb/v8"
 )
 
 // FilesMap is a struct for listing files by Size and Hash to search for duplicates

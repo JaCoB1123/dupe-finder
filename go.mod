@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/corona10/goimagehash v1.1.0
 	github.com/steakknife/hamming v0.0.0-20180906055917-c99c65617cd3
-	github.com/vbauerster/mpb/v7 v7.5.3
+	github.com/vbauerster/mpb/v8 v8.7.0
 )
 
 require (
