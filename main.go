@@ -74,7 +74,7 @@ func main() {
 				decor.Elapsed(decor.ET_STYLE_HHMMSS),
 			),
 			mpb.AppendDecorators(
-				decor.AverageSpeed(decor.UnitKiB, "%23.2f"),
+				decor.AverageSpeed(decor.SizeB1024(0), "%23.2f"),
 				decor.Name("   "),
 				decor.CurrentKibiByte("%5d"),
 			),
@@ -85,7 +85,7 @@ func main() {
 				decor.Elapsed(decor.ET_STYLE_HHMMSS),
 			),
 			mpb.AppendDecorators(
-				decor.AverageSpeed(decor.UnitKiB, "%23.2f"),
+				decor.AverageSpeed(decor.SizeB1024(0), "%23.2f"),
 				decor.Name("   "),
 				decor.CurrentKibiByte("%5d"),
 			),
