@@ -109,14 +109,18 @@ func main() {
 		ioutil.WriteFile(*toFile, json, 0644)
 	}
 
+	for hash, duplicateFiles := range filesMap.FilesByHash {
+		if len(duplicateFiles) > 1 {
+			continue
+		}
+
+		delete(filesMap.FilesByHash, hash)
+	}
+
 	if *deleteDupesIn != "" {
 		deleteIn := filepath.Clean(*deleteDupesIn)
 		for hash := range filesMap.FilesByHash {
 			duplicateFiles := filesMap.FilesByHash[hash]
-			if len(duplicateFiles) <= 1 {
-				continue
-			}
-
 			hasDupesInFolder := false
 			hasDupesOutsideFolder := false
 			for _, file := range duplicateFiles {
@@ -153,10 +157,6 @@ func main() {
 		reader := bufio.NewReader(os.Stdin)
 		for hash := range filesMap.FilesByHash {
 			duplicateFiles := filesMap.FilesByHash[hash]
-			if len(duplicateFiles) <= 1 {
-				continue
-			}
-
 			promptForDeletion(reader, duplicateFiles)
 		}
 	} else {
@@ -165,10 +165,6 @@ func main() {
 
 		fmt.Println("Files that are binary identical:")
 		for _, duplicateFiles := range filesMap.FilesByHash {
-			if len(duplicateFiles) <= 1 {
-				continue
-			}
-
 			countDupeSets++
 			for _, file := range duplicateFiles {
 				countInstances++
