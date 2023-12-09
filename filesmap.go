@@ -14,29 +14,18 @@ import (
 
 // FilesMap is a struct for listing files by Size and Hash to search for duplicates
 type FilesMap struct {
-	Images []imageEntry
-
-	FilesBySize map[int64]string
-
-	FilesByHash map[string][]string
-
-	FilesHashing chan fileEntry
-
-	FilesHashed chan fileEntry
-
-	ImagesHashing chan imageEntry
-
-	ImagesHashed chan imageEntry
-
-	progress *mpb.Progress
-
-	incomingBar *mpb.Bar
-
-	fileHashingBar *mpb.Bar
-
+	Images          []imageEntry
+	FilesBySize     map[int64]string
+	FilesByHash     map[string][]string
+	FilesHashing    chan fileEntry
+	FilesHashed     chan fileEntry
+	ImagesHashing   chan imageEntry
+	ImagesHashed    chan imageEntry
+	progress        *mpb.Progress
+	incomingBar     *mpb.Bar
+	fileHashingBar  *mpb.Bar
 	imageHashingBar *mpb.Bar
-
-	lock sync.Mutex
+	lock            sync.Mutex
 }
 
 func newFilesMap() *FilesMap {
