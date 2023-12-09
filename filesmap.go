@@ -1,9 +1,10 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
-	"log"
+	"image"
 	"os"
 	"path/filepath"
 	"sync"
@@ -61,7 +62,7 @@ func (fm *FilesMap) FileHashingWorker(wg *sync.WaitGroup) {
 		fm.FilesHashed <- file
 
 		if err != nil {
-			log.Printf("Error calculating Hash file for %s: %v\n", file.path, err)
+			fmt.Fprintf(fm.progress, "Error calculating Hash for file %s: %v\n", file.path, err)
 			continue
 		}
 
@@ -79,8 +80,10 @@ func (fm *FilesMap) ImageHashingWorker(wg *sync.WaitGroup) {
 		hash, err := calculateImageHash(file.path)
 		fm.imageHashingBar.IncrInt64(file.size)
 
-		if err != nil {
-			log.Printf("Error calculating Hash for image %s: %v\n", file.path, err)
+		if errors.Is(err, image.ErrFormat) {
+			continue
+		} else if err != nil {
+			fmt.Fprintf(fm.progress, "Error calculating Hash for image %s: %v\n", file.path, err)
 			continue
 		}
 
