@@ -15,9 +15,6 @@ import (
 	"strings"
 	"sync"
 
-	"slices"
-
-	"github.com/steakknife/hamming"
 	"github.com/vbauerster/mpb/v8"
 	"github.com/vbauerster/mpb/v8/decor"
 )
@@ -195,8 +192,7 @@ func main() {
 		countDupeSets := 0
 
 		fmt.Println("Files that are binary identical:")
-		for hash := range filesMap.FilesByHash {
-			duplicateFiles := filesMap.FilesByHash[hash]
+		for _, duplicateFiles := range filesMap.FilesByHash {
 			if len(duplicateFiles) <= 1 {
 				continue
 			}
@@ -210,32 +206,12 @@ func main() {
 		}
 
 		fmt.Println("Images that are similar:")
-		for len(filesMap.Images) > 0 {
-			file := filesMap.Images[0]
-			filesMap.Images = slices.Delete(filesMap.Images, 0, 1)
-			var currentCluster []imageEntry
-
-			currentCluster = append(currentCluster, file)
-			for otherIndex := len(filesMap.Images) - 1; otherIndex >= 0; otherIndex-- {
-				otherFile := filesMap.Images[otherIndex]
-				var distance = hamming.Uint64(file.imageHash, otherFile.imageHash)
-				if distance > 5 {
-					continue
-				}
-
-				filesMap.Images = slices.Delete(filesMap.Images, otherIndex, otherIndex+1)
-				if len(currentCluster) == 1 {
-					fmt.Println(currentCluster[0].path)
-					countDupeSets++
-					countInstances++
-				}
-				currentCluster = append(currentCluster, otherFile)
-				fmt.Println(otherFile.path, distance)
+		imageClusters := filesMap.getImageClusters()
+		for _, cluster := range imageClusters {
+			countDupeSets++
+			for _, image := range cluster.images {
 				countInstances++
-			}
-
-			if len(currentCluster) <= 1 {
-				continue
+				fmt.Println(image.path, image.distance)
 			}
 
 			fmt.Println()
