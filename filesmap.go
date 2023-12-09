@@ -203,7 +203,7 @@ func (fm *FilesMap) getImageClusters() []imageCluster {
 			currentCluster = append(currentCluster, similarImage{path: otherFile.path, distance: distance})
 		}
 
-		if len(currentCluster) == 0 {
+		if len(currentCluster) == 1 {
 			continue
 		}
 
