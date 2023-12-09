@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"runtime/pprof"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -158,34 +157,7 @@ func main() {
 				continue
 			}
 
-			fmt.Print("\033[H\033[2J")
-			for i, file := range duplicateFiles {
-				fmt.Println(i+1, file)
-			}
-
-			fmt.Printf("Which file to keep? ")
-			input, err := reader.ReadString('\n')
-			if err != nil {
-				fmt.Println("Invalid input")
-				continue
-			}
-
-			input = strings.TrimRight(input, "\n\r")
-			intInput, err := strconv.Atoi(input)
-			if err != nil || intInput > len(duplicateFiles) || intInput < 1 {
-				fmt.Println("Invalid input")
-				continue
-			}
-
-			for i, file := range duplicateFiles {
-				if i+1 == intInput {
-					continue
-				}
-
-				if *force {
-					remove(file)
-				}
-			}
+			promptForDeletion(reader, duplicateFiles)
 		}
 	} else {
 		countInstances := 0
