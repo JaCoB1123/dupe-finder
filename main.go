@@ -55,7 +55,7 @@ func main() {
 	} else {
 		filesMap.incomingBar = filesMap.progress.AddSpinner(0,
 			mpb.PrependDecorators(
-				decor.Name("Finding files "),
+				decor.Name("Finding files  "),
 				decor.Elapsed(decor.ET_STYLE_HHMMSS),
 			),
 			mpb.AppendDecorators(
@@ -66,7 +66,7 @@ func main() {
 		)
 		filesMap.fileHashingBar = filesMap.progress.AddBar(0,
 			mpb.PrependDecorators(
-				decor.Name("Hashing files "),
+				decor.Name("Hashing files  "),
 				decor.Elapsed(decor.ET_STYLE_HHMMSS),
 			),
 			mpb.AppendDecorators(
