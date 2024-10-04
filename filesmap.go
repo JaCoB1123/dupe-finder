@@ -43,7 +43,7 @@ func newFilesMap() *FilesMap {
 func (fm *FilesMap) FileHashingWorker(wg *sync.WaitGroup) {
 	for file := range fm.FilesHashing {
 		if *verbose {
-			fmt.Println("Hashing file", file.path)
+			fmt.Fprintf(fm.progress, "Hashing file %s\n", file.path)
 		}
 
 		hash, err := calculateFileHash(file.path)
@@ -63,7 +63,7 @@ func (fm *FilesMap) FileHashingWorker(wg *sync.WaitGroup) {
 func (fm *FilesMap) ImageHashingWorker(wg *sync.WaitGroup) {
 	for file := range fm.ImagesHashing {
 		if *verbose {
-			fmt.Println("Hashing image", file.path)
+			fmt.Fprintf(fm.progress, "Hashing image %s\n", file.path)
 		}
 
 		hash, err := calculateImageHash(file.path)
