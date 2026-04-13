@@ -14,13 +14,13 @@ import (
 
 // FilesMap is a struct for listing files by Size and Hash to search for duplicates
 type FilesMap struct {
-	Images          []imageEntry
+	Images          []*imageEntry
 	FilesBySize     map[int64]string
 	FilesByHash     map[string][]string
-	FilesHashing    chan fileEntry
-	FilesHashed     chan fileEntry
-	ImagesHashing   chan imageEntry
-	ImagesHashed    chan imageEntry
+	FilesHashing    chan *fileEntry
+	FilesHashed     chan *fileEntry
+	ImagesHashing   chan *imageEntry
+	ImagesHashed    chan *imageEntry
 	progress        *mpb.Progress
 	incomingBar     *mpb.Bar
 	fileHashingBar  *mpb.Bar
@@ -32,10 +32,10 @@ func newFilesMap() *FilesMap {
 	return &FilesMap{
 		FilesBySize:   map[int64]string{},
 		FilesByHash:   map[string][]string{},
-		FilesHashed:   make(chan fileEntry, 100000),
-		FilesHashing:  make(chan fileEntry),
-		ImagesHashed:  make(chan imageEntry, 100000),
-		ImagesHashing: make(chan imageEntry),
+		FilesHashed:   make(chan *fileEntry, 100000),
+		FilesHashing:  make(chan *fileEntry),
+		ImagesHashed:  make(chan *imageEntry, 100000),
+		ImagesHashing: make(chan *imageEntry),
 		progress:      mpb.New(mpb.WithWidth(64)),
 	}
 }
@@ -49,7 +49,6 @@ func (fm *FilesMap) FileHashingWorker(wg *sync.WaitGroup) {
 		hash, err := calculateFileHash(file.path)
 		fm.fileHashingBar.IncrInt64(file.size)
 		fm.FilesHashed <- file
-
 		if err != nil {
 			fmt.Fprintf(fm.progress, "Error calculating Hash for file %s: %v\n", file.path, err)
 			continue
@@ -85,7 +84,7 @@ func (fm *FilesMap) ImageHashingWorker(wg *sync.WaitGroup) {
 func (fm *FilesMap) HashedWorker(done chan bool) {
 	for file := range fm.FilesHashed {
 		if *verbose {
-			fmt.Println("Finishing", file.path)
+			fmt.Printf("Finishing '%s' with hash '%s'\n", file.path, file.hash)
 		}
 
 		fm.lock.Lock()
@@ -152,9 +151,9 @@ func (fm *FilesMap) hashFile(path string, size int64) int64 {
 		fmt.Println("Incoming", path)
 	}
 
-	fm.FilesHashing <- fileEntry{path, size, ""}
+	fm.FilesHashing <- &fileEntry{path, size, ""}
 	if prevFile != "" {
-		fm.FilesHashing <- fileEntry{prevFile, size, ""}
+		fm.FilesHashing <- &fileEntry{prevFile, size, ""}
 		return 2
 	}
 
@@ -162,7 +161,7 @@ func (fm *FilesMap) hashFile(path string, size int64) int64 {
 }
 
 func (fm *FilesMap) hashImage(path string, size int64) {
-	fm.ImagesHashing <- imageEntry{path, size, 0}
+	fm.ImagesHashing <- &imageEntry{path, size, 0}
 }
 
 type imageEntry struct {
