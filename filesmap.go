@@ -48,13 +48,13 @@ func (fm *FilesMap) FileHashingWorker(wg *sync.WaitGroup) {
 
 		hash, err := calculateFileHash(file.path)
 		fm.fileHashingBar.IncrInt64(file.size)
-		fm.FilesHashed <- file
 		if err != nil {
 			fmt.Fprintf(fm.progress, "Error calculating Hash for file %s: %v\n", file.path, err)
 			continue
 		}
 
 		file.hash = hash
+		fm.FilesHashed <- file
 	}
 	wg.Done()
 }
