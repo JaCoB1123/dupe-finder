@@ -14,9 +14,13 @@ import (
 
 // FilesMap is a struct for listing files by Size and Hash to search for duplicates
 type FilesMap struct {
-	Images          []*imageEntry
-	FilesBySize     map[int64]string
-	FilesByHash     map[string][]string
+	Images      []*imageEntry
+	FilesBySize map[int64]string
+	FilesByHash map[string][]string
+	// fileSizes records the size of every file found during the walk, so image
+	// candidates can be hashed without re-stat'ing the files. It is not
+	// serialized to the results file.
+	fileSizes       map[string]int64
 	FilesHashing    chan *fileEntry
 	FilesHashed     chan *fileEntry
 	ImagesHashing   chan *imageEntry
@@ -32,15 +36,18 @@ func newFilesMap() *FilesMap {
 	return &FilesMap{
 		FilesBySize:   map[int64]string{},
 		FilesByHash:   map[string][]string{},
-		FilesHashed:   make(chan *fileEntry, 100000),
+		fileSizes:     map[string]int64{},
 		FilesHashing:  make(chan *fileEntry),
-		ImagesHashed:  make(chan *imageEntry, 100000),
+		FilesHashed:   make(chan *fileEntry, 100000),
 		ImagesHashing: make(chan *imageEntry),
+		ImagesHashed:  make(chan *imageEntry, 100000),
 		progress:      mpb.New(mpb.WithWidth(64)),
 	}
 }
 
+// Stage 2: compute the file hash of every file sent over FilesHashing.
 func (fm *FilesMap) FileHashingWorker(wg *sync.WaitGroup) {
+	defer wg.Done()
 	for file := range fm.FilesHashing {
 		if *verbose {
 			fmt.Fprintf(fm.progress, "Hashing file %s\n", file.path)
@@ -56,10 +63,25 @@ func (fm *FilesMap) FileHashingWorker(wg *sync.WaitGroup) {
 		file.hash = hash
 		fm.FilesHashed <- file
 	}
-	wg.Done()
 }
 
+// Stage 2: collect the file hashes into FilesByHash once FilesHashed is closed.
+func (fm *FilesMap) fileHashMergeWorker(done chan bool) {
+	for file := range fm.FilesHashed {
+		if *verbose {
+			fmt.Printf("Finishing '%s' with hash '%s'\n", file.path, file.hash)
+		}
+
+		fm.lock.Lock()
+		fm.FilesByHash[file.hash] = append(fm.FilesByHash[file.hash], file.path)
+		fm.lock.Unlock()
+	}
+	done <- true
+}
+
+// Stage 4: compute the image hash of every candidate sent over ImagesHashing.
 func (fm *FilesMap) ImageHashingWorker(wg *sync.WaitGroup) {
+	defer wg.Done()
 	for file := range fm.ImagesHashing {
 		if *verbose {
 			fmt.Fprintf(fm.progress, "Hashing image %s\n", file.path)
@@ -78,20 +100,10 @@ func (fm *FilesMap) ImageHashingWorker(wg *sync.WaitGroup) {
 		file.imageHash = hash
 		fm.ImagesHashed <- file
 	}
-	wg.Done()
 }
 
-func (fm *FilesMap) HashedWorker(done chan bool) {
-	for file := range fm.FilesHashed {
-		if *verbose {
-			fmt.Printf("Finishing '%s' with hash '%s'\n", file.path, file.hash)
-		}
-
-		fm.lock.Lock()
-		fm.FilesByHash[file.hash] = append(fm.FilesByHash[file.hash], file.path)
-		fm.lock.Unlock()
-	}
-
+// Stage 4: collect the image hashes into Images once ImagesHashed is closed.
+func (fm *FilesMap) imageHashMergeWorker(done chan bool) {
 	for file := range fm.ImagesHashed {
 		if *verbose {
 			fmt.Println("Finishing", file.path)
@@ -101,10 +113,13 @@ func (fm *FilesMap) HashedWorker(done chan bool) {
 		fm.Images = append(fm.Images, file)
 		fm.lock.Unlock()
 	}
-
 	done <- true
 }
 
+// Stage 1: walk the trees and deduplicate by file size.
+// A file is only file-hashed once another file with the same size has been
+// seen; a unique size cannot be an exact duplicate. It returns the number of
+// files found.
 func (fm *FilesMap) WalkDirectories() int64 {
 	var countFiles int64 = 0
 	sumSize := int64(0)
@@ -122,7 +137,7 @@ func (fm *FilesMap) WalkDirectories() int64 {
 			countFiles++
 			fm.incomingBar.SetTotal(int64(countFiles), false)
 
-			fm.hashImage(path, size)
+			fm.fileSizes[path] = size
 			count := fm.hashFile(path, size)
 			if count > 0 {
 				sumSize += size * count
@@ -134,10 +149,11 @@ func (fm *FilesMap) WalkDirectories() int64 {
 
 	fm.incomingBar.SetTotal(int64(countFiles), true)
 	close(fm.FilesHashing)
-	close(fm.ImagesHashing)
 	return countFiles
 }
 
+// hashFile applies the file size step for a single file. It returns how many
+// files were queued to be file-hashed.
 func (fm *FilesMap) hashFile(path string, size int64) int64 {
 	prevFile, ok := fm.FilesBySize[size]
 	if !ok {
@@ -158,10 +174,6 @@ func (fm *FilesMap) hashFile(path string, size int64) int64 {
 	}
 
 	return 1
-}
-
-func (fm *FilesMap) hashImage(path string, size int64) {
-	fm.ImagesHashing <- &imageEntry{path, size, 0}
 }
 
 type imageEntry struct {
