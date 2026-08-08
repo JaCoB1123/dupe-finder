@@ -101,36 +101,8 @@ func main() {
 		close(filesMap.FilesHashed)
 		<-fileHashingDone
 
-		// Stage 3: image hashes are only needed for files with no file-hash
-		// collision: either they were never file-hashed (unique size) or their
-		// file hash did not match any other file.
-		var imageCandidates []*imageEntry
-
-		// Files whose size is unique were never file-hashed, so they have no
-		// collision but may still be visually similar images.
-		for size, file := range filesMap.FilesBySize {
-			if file == "" {
-				continue
-			}
-			imageCandidates = append(imageCandidates, &imageEntry{path: file, size: size})
-		}
-
-		// Files that were file-hashed without colliding also need an image hash.
-		for _, files := range filesMap.FilesByHash {
-			if len(files) != 1 {
-				continue
-			}
-			imageCandidates = append(imageCandidates, &imageEntry{path: files[0], size: filesMap.fileSizes[files[0]]})
-		}
-
-		// Stage 4: compute the image hash of every candidate.
-		go func() {
-			for _, candidate := range imageCandidates {
-				filesMap.ImagesHashing <- candidate
-			}
-			close(filesMap.ImagesHashing)
-		}()
-
+		// Start the image-hashing workers before feeding candidates, so the
+		// feed never blocks regardless of how many candidates there are.
 		imageWG := sync.WaitGroup{}
 		imageHashingDone := make(chan bool)
 		for i := 0; i < runtime.GOMAXPROCS(0); i++ {
@@ -138,6 +110,29 @@ func main() {
 			go filesMap.ImageHashingWorker(&imageWG)
 		}
 		go filesMap.imageHashMergeWorker(imageHashingDone)
+
+		// Image hashes are only needed for files with no file-hash collision:
+		// either they were never file-hashed (unique size) or their file hash
+		// did not match any other file. Feed each candidate directly.
+
+		// Files whose size is unique were never file-hashed, so they have no
+		// collision but may still be visually similar images.
+		for size, file := range filesMap.FilesBySize {
+			if file == "" {
+				continue
+			}
+			filesMap.ImagesHashing <- &imageEntry{path: file, size: size}
+		}
+
+		// Files that were file-hashed without colliding also need an image hash.
+		for _, files := range filesMap.FilesByHash {
+			if len(files) != 1 {
+				continue
+			}
+			filesMap.ImagesHashing <- &imageEntry{path: files[0], size: filesMap.fileSizes[files[0]]}
+		}
+
+		close(filesMap.ImagesHashing)
 
 		imageWG.Wait()
 		close(filesMap.ImagesHashed)

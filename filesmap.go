@@ -39,7 +39,7 @@ func newFilesMap() *FilesMap {
 		fileSizes:     map[string]int64{},
 		FilesHashing:  make(chan *fileEntry),
 		FilesHashed:   make(chan *fileEntry, 100000),
-		ImagesHashing: make(chan *imageEntry),
+		ImagesHashing: make(chan *imageEntry, 100000),
 		ImagesHashed:  make(chan *imageEntry, 100000),
 		progress:      mpb.New(mpb.WithWidth(64)),
 	}
