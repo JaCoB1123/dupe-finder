@@ -5,7 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"image"
-	"os"
+	"io/fs"
 	"path/filepath"
 	"sync"
 
@@ -124,7 +124,7 @@ func (fm *FilesMap) WalkDirectories() int64 {
 	var countFiles int64 = 0
 	sumSize := int64(0)
 	for _, path := range flag.Args() {
-		filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
+		filepath.WalkDir(path, func(path string, info fs.DirEntry, err error) error {
 			if err != nil || info == nil {
 				fmt.Printf("WARN: got %s for %s", err.Error(), path)
 				return nil
@@ -134,7 +134,8 @@ func (fm *FilesMap) WalkDirectories() int64 {
 				return nil
 			}
 
-			size := info.Size()
+			finfo, err := info.Info()
+			size := finfo.Size()
 			if *minSize > size {
 				return nil
 			}
