@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"image"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"sync"
 
@@ -124,9 +125,9 @@ func (fm *FilesMap) WalkDirectories() int64 {
 	var countFiles int64 = 0
 	sumSize := int64(0)
 	for _, path := range flag.Args() {
-		filepath.WalkDir(path, func(path string, info fs.DirEntry, err error) error {
+		err := filepath.WalkDir(path, func(path string, info fs.DirEntry, err error) error {
 			if err != nil || info == nil {
-				fmt.Printf("WARN: got %s for %s", err.Error(), path)
+				fmt.Fprintf(os.Stderr, "WARN: got '%v' for %s", err, path)
 				return nil
 			}
 
@@ -151,6 +152,9 @@ func (fm *FilesMap) WalkDirectories() int64 {
 			}
 			return nil
 		})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "WARN: could not finish walking %q: %v\n", path, err)
+		}
 	}
 
 	fm.incomingBar.SetTotal(int64(countFiles), true)
