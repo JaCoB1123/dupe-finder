@@ -127,7 +127,7 @@ func (fm *FilesMap) WalkDirectories() int64 {
 	for _, path := range flag.Args() {
 		err := filepath.WalkDir(path, func(path string, info fs.DirEntry, err error) error {
 			if err != nil || info == nil {
-				fmt.Fprintf(os.Stderr, "WARN: got '%v' for %s", err, path)
+				fmt.Fprintf(os.Stderr, "WARN: got '%v' for %s\n", err, path)
 				return nil
 			}
 
