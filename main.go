@@ -29,7 +29,14 @@ var verbose = flag.Bool("verbose", false, "Output additional information")
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
 
 func main() {
+	flag.Usage = printUsage
 	flag.Parse()
+
+	if err := validateSearchPaths(flag.Args()); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n\n", err)
+		flag.Usage()
+		os.Exit(2)
+	}
 
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)
@@ -241,4 +248,18 @@ func printConfiguration() {
 
 	fmt.Println()
 	fmt.Println()
+}
+
+func printUsage() {
+	fmt.Fprintf(flag.CommandLine.Output(), "Usage: %s [options] <path> [<path> ...]\n", os.Args[0])
+	flag.PrintDefaults()
+}
+
+func validateSearchPaths(paths []string) error {
+	for _, path := range paths {
+		if _, err := os.Stat(path); err != nil {
+			return fmt.Errorf("cannot access search path %q: %w", path, err)
+		}
+	}
+	return nil
 }
