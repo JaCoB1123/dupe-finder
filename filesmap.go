@@ -125,6 +125,11 @@ func (fm *FilesMap) WalkDirectories() int64 {
 	sumSize := int64(0)
 	for _, path := range flag.Args() {
 		filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
+			if err != nil || info == nil {
+				fmt.Printf("WARN: got %s for %s", err.Error(), path)
+				return nil
+			}
+
 			if info.IsDir() {
 				return nil
 			}
